@@ -1,0 +1,4 @@
+playwright==1.40.0
+pandas==2.1.3
+asyncio
+tqdm

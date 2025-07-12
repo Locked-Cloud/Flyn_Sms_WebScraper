@@ -1,0 +1,709 @@
+2025-07-13 00:14:52,894 - INFO - Browser initialized successfully
+2025-07-13 00:14:58,376 - INFO - Captcha text: 
+	
+	
+		
+			
+				
+				
+						
+					Login to Account
+					
+										
+						
+						
+						
+							
+						
+					
+
+					
+						
+						
+						
+							
+						
+					
+					
+					
+						What is 2 + 6 = ? : 
+					
+					
+					
+						
+							Login
+						
+					
+					
+
+				
+					
+					
+
+					
+				
+			
+		
+	
+	
+	
+
+	
+	
+	
+
+	
+	
+
+	
+
+	
+	
+		$('.js-tilt').tilt({
+			scale: 1.1
+		})
+	
+
+	
+
+
+
+
+2025-07-13 00:14:58,379 - INFO - Solved captcha: 2 + 6 = 8
+2025-07-13 00:14:59,405 - INFO - Filled captcha answer (method 2): 8
+2025-07-13 00:15:02,368 - INFO - Login successful, navigating to SMS dashboard
+2025-07-13 00:15:04,108 - INFO - Successfully navigated to SMS dashboard
+2025-07-13 00:15:04,109 - INFO - Successfully logged into SMS service
+2025-07-13 00:15:04,109 - INFO - ============================================================
+2025-07-13 00:15:04,109 - INFO - CHECKING EXISTING MESSAGES IN SMS SERVICE
+2025-07-13 00:15:04,109 - INFO - ============================================================
+2025-07-13 00:15:07,150 - WARNING - DataTable not found on page
+2025-07-13 00:15:07,331 - INFO - Screenshot saved as 'sms_page_after_login.png'
+2025-07-13 00:15:07,331 - INFO - Found CSV file: Flyn SMS  My SMS Numbers.csv
+2025-07-13 00:15:07,343 - INFO - Successfully read 25 phone numbers from Flyn SMS  My SMS Numbers.csv
+2025-07-13 00:15:07,343 - INFO - CSV columns: ['Range', 'Prefix', 'Number', 'My Payterm', 'My Payout', 'Limits']
+2025-07-13 00:15:07,343 - INFO - ============================================================
+2025-07-13 00:15:07,344 - INFO - ANALYZING PHONE NUMBERS FROM CSV
+2025-07-13 00:15:07,344 - INFO - ============================================================
+2025-07-13 00:15:17,354 - ERROR - Error extracting SMS data from table: Timeout 10000ms exceeded.
+2025-07-13 00:15:17,354 - INFO - CSV contains 25 phone numbers
+2025-07-13 00:15:17,354 - INFO - SMS service has 0 messages
+2025-07-13 00:15:17,521 - INFO - Analyzing phone number 1: 233201915227
+2025-07-13 00:15:17,522 - INFO -   ✗ No messages found for 233201915227
+2025-07-13 00:15:17,522 - INFO - Analyzing phone number 2: 233200704879
+2025-07-13 00:15:17,522 - INFO -   ✗ No messages found for 233200704879
+2025-07-13 00:15:17,522 - INFO - Analyzing phone number 3: 233202322431
+2025-07-13 00:15:17,523 - INFO -   ✗ No messages found for 233202322431
+2025-07-13 00:15:17,523 - INFO - Analyzing phone number 4: 233203146752
+2025-07-13 00:15:17,523 - INFO -   ✗ No messages found for 233203146752
+2025-07-13 00:15:17,523 - INFO - Analyzing phone number 5: 233206767417
+2025-07-13 00:15:17,523 - INFO -   ✗ No messages found for 233206767417
+2025-07-13 00:15:17,523 - INFO - Analyzing phone number 6: 233209360486
+2025-07-13 00:15:17,523 - INFO -   ✗ No messages found for 233209360486
+2025-07-13 00:15:17,524 - INFO - Analyzing phone number 7: 233202160551
+2025-07-13 00:15:17,524 - INFO -   ✗ No messages found for 233202160551
+2025-07-13 00:15:17,524 - INFO - Analyzing phone number 8: 233203862710
+2025-07-13 00:15:17,524 - INFO -   ✗ No messages found for 233203862710
+2025-07-13 00:15:17,524 - INFO - Analyzing phone number 9: 233505409272
+2025-07-13 00:15:17,524 - INFO -   ✗ No messages found for 233505409272
+2025-07-13 00:15:17,524 - INFO - Analyzing phone number 10: 233205566936
+2025-07-13 00:15:17,525 - INFO -   ✗ No messages found for 233205566936
+2025-07-13 00:15:17,525 - INFO - Analyzing phone number 11: 233208215704
+2025-07-13 00:15:17,525 - INFO -   ✗ No messages found for 233208215704
+2025-07-13 00:15:17,525 - INFO - Analyzing phone number 12: 233205860171
+2025-07-13 00:15:17,525 - INFO -   ✗ No messages found for 233205860171
+2025-07-13 00:15:17,525 - INFO - Analyzing phone number 13: 233506826838
+2025-07-13 00:15:17,525 - INFO -   ✗ No messages found for 233506826838
+2025-07-13 00:15:17,525 - INFO - Analyzing phone number 14: 233204314525
+2025-07-13 00:15:17,525 - INFO -   ✗ No messages found for 233204314525
+2025-07-13 00:15:17,525 - INFO - Analyzing phone number 15: 233501885413
+2025-07-13 00:15:17,526 - INFO -   ✗ No messages found for 233501885413
+2025-07-13 00:15:17,526 - INFO - Analyzing phone number 16: 233206345942
+2025-07-13 00:15:17,526 - INFO -   ✗ No messages found for 233206345942
+2025-07-13 00:15:17,526 - INFO - Analyzing phone number 17: 233209768113
+2025-07-13 00:15:17,526 - INFO -   ✗ No messages found for 233209768113
+2025-07-13 00:15:17,526 - INFO - Analyzing phone number 18: 233501620322
+2025-07-13 00:15:17,526 - INFO -   ✗ No messages found for 233501620322
+2025-07-13 00:15:17,526 - INFO - Analyzing phone number 19: 233206006939
+2025-07-13 00:15:17,526 - INFO -   ✗ No messages found for 233206006939
+2025-07-13 00:15:17,526 - INFO - Analyzing phone number 20: 233500400929
+2025-07-13 00:15:17,527 - INFO -   ✗ No messages found for 233500400929
+2025-07-13 00:15:17,527 - INFO - Analyzing phone number 21: 233501161652
+2025-07-13 00:15:17,527 - INFO -   ✗ No messages found for 233501161652
+2025-07-13 00:15:17,527 - INFO - Analyzing phone number 22: 233205890245
+2025-07-13 00:15:17,527 - INFO -   ✗ No messages found for 233205890245
+2025-07-13 00:15:17,527 - INFO - Analyzing phone number 23: 233204234029
+2025-07-13 00:15:17,529 - INFO -   ✗ No messages found for 233204234029
+2025-07-13 00:15:17,529 - INFO - Analyzing phone number 24: 233209659487
+2025-07-13 00:15:17,529 - INFO -   ✗ No messages found for 233209659487
+2025-07-13 00:15:17,529 - INFO - Analyzing phone number 25: 233508452054
+2025-07-13 00:15:17,529 - INFO -   ✗ No messages found for 233508452054
+2025-07-13 00:15:17,530 - INFO - Analysis results saved to phone_analysis_20250713_001517.json
+2025-07-13 00:15:17,531 - INFO - Summary:
+2025-07-13 00:15:17,531 - INFO -   - Phone numbers with messages: 0
+2025-07-13 00:15:17,531 - INFO -   - Phone numbers without messages: 25
+2025-07-13 00:15:17,531 - INFO - ============================================================
+2025-07-13 00:15:17,531 - INFO - FINISHED ANALYZING PHONE NUMBERS
+2025-07-13 00:15:17,531 - INFO - ============================================================
+2025-07-13 00:17:30,414 - INFO - Browser initialized successfully
+2025-07-13 00:17:34,711 - INFO - Captcha text: 
+	
+	
+		
+			
+				
+				
+						
+					Login to Account
+					
+										
+						
+						
+						
+							
+						
+					
+
+					
+						
+						
+						
+							
+						
+					
+					
+					
+						What is 2 + 2 = ? : 
+					
+					
+					
+						
+							Login
+						
+					
+					
+
+				
+					
+					
+
+					
+				
+			
+		
+	
+	
+	
+
+	
+	
+	
+
+	
+	
+
+	
+
+	
+	
+		$('.js-tilt').tilt({
+			scale: 1.1
+		})
+	
+
+	
+
+
+
+
+2025-07-13 00:17:34,712 - INFO - Solved captcha: 2 + 2 = 4
+2025-07-13 00:17:35,729 - INFO - Filled captcha answer (method 2): 4
+2025-07-13 00:17:38,527 - INFO - Login successful, navigating to SMS data page for extraction
+2025-07-13 00:17:40,102 - INFO - Successfully navigated to SMSCDRStats for SMS extraction
+2025-07-13 00:17:40,103 - INFO - Successfully logged into SMS service
+2025-07-13 00:17:40,103 - INFO - ============================================================
+2025-07-13 00:17:40,103 - INFO - CHECKING EXISTING MESSAGES IN SMS SERVICE
+2025-07-13 00:17:40,103 - INFO - ============================================================
+2025-07-13 00:17:43,140 - INFO - Table info: Showing 1 to 2 of 2 entries
+2025-07-13 00:17:43,232 - INFO - Extracted 2 SMS records from table
+2025-07-13 00:17:43,232 - INFO - Found 2 existing messages:
+2025-07-13 00:17:43,232 - INFO - ------------------------------------------------------------
+2025-07-13 00:17:43,232 - INFO - Message 1:
+2025-07-13 00:17:43,232 - INFO -   Date: 2025-07-12 22:19:55
+2025-07-13 00:17:43,232 - INFO -   Range: Ghana
+2025-07-13 00:17:43,232 - INFO -   Number: 233200704879
+2025-07-13 00:17:43,232 - INFO -   CLI: AIRBNB
+2025-07-13 00:17:43,233 - INFO -   SMS: Your Airbnb verification code is 809418 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 00:17:43,233 - INFO -   Currency: $
+2025-07-13 00:17:43,233 - INFO -   Payout: 0
+2025-07-13 00:17:43,233 - INFO - ----------------------------------------
+2025-07-13 00:17:43,233 - INFO - Message 2:
+2025-07-13 00:17:43,233 - INFO -   Date: 2025-07-12 21:22:56
+2025-07-13 00:17:43,233 - INFO -   Range: Ghana
+2025-07-13 00:17:43,233 - INFO -   Number: 233201915227
+2025-07-13 00:17:43,233 - INFO -   CLI: AIRBNB
+2025-07-13 00:17:43,233 - INFO -   SMS: Your Airbnb verification code is 005646 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 00:17:43,234 - INFO -   Currency: $
+2025-07-13 00:17:43,234 - INFO -   Payout: 0
+2025-07-13 00:17:43,234 - INFO - ----------------------------------------
+2025-07-13 00:17:43,234 - INFO - ============================================================
+2025-07-13 00:17:43,234 - INFO - EXTRACTED VERIFICATION CODES:
+2025-07-13 00:17:43,234 - INFO - ============================================================
+2025-07-13 00:17:43,234 - INFO - Code 1:
+2025-07-13 00:17:43,234 - INFO -   Number: 233200704879
+2025-07-13 00:17:43,234 - INFO -   Code: 809418
+2025-07-13 00:17:43,234 - INFO -   Date: 2025-07-12 22:19:55
+2025-07-13 00:17:43,234 - INFO - ----------------------------------------
+2025-07-13 00:17:43,235 - INFO - Code 2:
+2025-07-13 00:17:43,235 - INFO -   Number: 233201915227
+2025-07-13 00:17:43,235 - INFO -   Code: 005646
+2025-07-13 00:17:43,235 - INFO -   Date: 2025-07-12 21:22:56
+2025-07-13 00:17:43,235 - INFO - ----------------------------------------
+2025-07-13 00:17:43,236 - INFO - Verification codes saved to verification_codes_20250713_001743.json
+2025-07-13 00:17:43,237 - INFO - All messages saved to sms_messages_20250713_001743.json
+2025-07-13 00:17:43,237 - INFO - ============================================================
+2025-07-13 00:17:43,238 - INFO - FINISHED CHECKING EXISTING MESSAGES
+2025-07-13 00:17:43,238 - INFO - ============================================================
+2025-07-13 00:17:43,239 - INFO - Found CSV file: Flyn SMS  My SMS Numbers.csv
+2025-07-13 00:17:43,241 - INFO - Successfully read 25 phone numbers from Flyn SMS  My SMS Numbers.csv
+2025-07-13 00:17:43,241 - INFO - CSV columns: ['Range', 'Prefix', 'Number', 'My Payterm', 'My Payout', 'Limits']
+2025-07-13 00:17:43,241 - INFO - ============================================================
+2025-07-13 00:17:43,241 - INFO - ANALYZING PHONE NUMBERS FROM CSV
+2025-07-13 00:17:43,241 - INFO - ============================================================
+2025-07-13 00:17:43,319 - INFO - Extracted 2 SMS records from table
+2025-07-13 00:17:43,320 - INFO - CSV contains 25 phone numbers
+2025-07-13 00:17:43,320 - INFO - SMS service has 2 messages
+2025-07-13 00:17:43,325 - INFO - Analyzing phone number 1: 233201915227
+2025-07-13 00:17:43,326 - INFO -   ✓ Found 1 message(s) for 233201915227
+2025-07-13 00:17:43,326 - INFO -     - CLI: AIRBNB, SMS: Your Airbnb verification code is 005646 Dont share...
+2025-07-13 00:17:43,326 - INFO - Analyzing phone number 2: 233200704879
+2025-07-13 00:17:43,326 - INFO -   ✓ Found 1 message(s) for 233200704879
+2025-07-13 00:17:43,327 - INFO -     - CLI: AIRBNB, SMS: Your Airbnb verification code is 809418 Dont share...
+2025-07-13 00:17:43,327 - INFO - Analyzing phone number 3: 233202322431
+2025-07-13 00:17:43,327 - INFO -   ✗ No messages found for 233202322431
+2025-07-13 00:17:43,327 - INFO - Analyzing phone number 4: 233203146752
+2025-07-13 00:17:43,327 - INFO -   ✗ No messages found for 233203146752
+2025-07-13 00:17:43,328 - INFO - Analyzing phone number 5: 233206767417
+2025-07-13 00:17:43,328 - INFO -   ✗ No messages found for 233206767417
+2025-07-13 00:17:43,328 - INFO - Analyzing phone number 6: 233209360486
+2025-07-13 00:17:43,328 - INFO -   ✗ No messages found for 233209360486
+2025-07-13 00:17:43,328 - INFO - Analyzing phone number 7: 233202160551
+2025-07-13 00:17:43,328 - INFO -   ✗ No messages found for 233202160551
+2025-07-13 00:17:43,328 - INFO - Analyzing phone number 8: 233203862710
+2025-07-13 00:17:43,328 - INFO -   ✗ No messages found for 233203862710
+2025-07-13 00:17:43,328 - INFO - Analyzing phone number 9: 233505409272
+2025-07-13 00:17:43,329 - INFO -   ✗ No messages found for 233505409272
+2025-07-13 00:17:43,329 - INFO - Analyzing phone number 10: 233205566936
+2025-07-13 00:17:43,329 - INFO -   ✗ No messages found for 233205566936
+2025-07-13 00:17:43,329 - INFO - Analyzing phone number 11: 233208215704
+2025-07-13 00:17:43,329 - INFO -   ✗ No messages found for 233208215704
+2025-07-13 00:17:43,329 - INFO - Analyzing phone number 12: 233205860171
+2025-07-13 00:17:43,329 - INFO -   ✗ No messages found for 233205860171
+2025-07-13 00:17:43,329 - INFO - Analyzing phone number 13: 233506826838
+2025-07-13 00:17:43,329 - INFO -   ✗ No messages found for 233506826838
+2025-07-13 00:17:43,329 - INFO - Analyzing phone number 14: 233204314525
+2025-07-13 00:17:43,330 - INFO -   ✗ No messages found for 233204314525
+2025-07-13 00:17:43,330 - INFO - Analyzing phone number 15: 233501885413
+2025-07-13 00:17:43,330 - INFO -   ✗ No messages found for 233501885413
+2025-07-13 00:17:43,330 - INFO - Analyzing phone number 16: 233206345942
+2025-07-13 00:17:43,330 - INFO -   ✗ No messages found for 233206345942
+2025-07-13 00:17:43,330 - INFO - Analyzing phone number 17: 233209768113
+2025-07-13 00:17:43,330 - INFO -   ✗ No messages found for 233209768113
+2025-07-13 00:17:43,330 - INFO - Analyzing phone number 18: 233501620322
+2025-07-13 00:17:43,330 - INFO -   ✗ No messages found for 233501620322
+2025-07-13 00:17:43,331 - INFO - Analyzing phone number 19: 233206006939
+2025-07-13 00:17:43,331 - INFO -   ✗ No messages found for 233206006939
+2025-07-13 00:17:43,331 - INFO - Analyzing phone number 20: 233500400929
+2025-07-13 00:17:43,331 - INFO -   ✗ No messages found for 233500400929
+2025-07-13 00:17:43,331 - INFO - Analyzing phone number 21: 233501161652
+2025-07-13 00:17:43,331 - INFO -   ✗ No messages found for 233501161652
+2025-07-13 00:17:43,331 - INFO - Analyzing phone number 22: 233205890245
+2025-07-13 00:17:43,331 - INFO -   ✗ No messages found for 233205890245
+2025-07-13 00:17:43,331 - INFO - Analyzing phone number 23: 233204234029
+2025-07-13 00:17:43,331 - INFO -   ✗ No messages found for 233204234029
+2025-07-13 00:17:43,331 - INFO - Analyzing phone number 24: 233209659487
+2025-07-13 00:17:43,332 - INFO -   ✗ No messages found for 233209659487
+2025-07-13 00:17:43,332 - INFO - Analyzing phone number 25: 233508452054
+2025-07-13 00:17:43,332 - INFO -   ✗ No messages found for 233508452054
+2025-07-13 00:17:43,333 - INFO - Analysis results saved to phone_analysis_20250713_001743.json
+2025-07-13 00:17:43,333 - INFO - Summary:
+2025-07-13 00:17:43,334 - INFO -   - Phone numbers with messages: 2
+2025-07-13 00:17:43,334 - INFO -   - Phone numbers without messages: 23
+2025-07-13 00:17:43,334 - INFO - ============================================================
+2025-07-13 00:17:43,334 - INFO - FINISHED ANALYZING PHONE NUMBERS
+2025-07-13 00:17:43,334 - INFO - ============================================================
+2025-07-13 00:17:59,180 - INFO - Browser initialized successfully
+2025-07-13 00:18:03,425 - INFO - Captcha text: 
+	
+	
+		
+			
+				
+				
+						
+					Login to Account
+					
+										
+						
+						
+						
+							
+						
+					
+
+					
+						
+						
+						
+							
+						
+					
+					
+					
+						What is 4 + 10 = ? : 
+					
+					
+					
+						
+							Login
+						
+					
+					
+
+				
+					
+					
+
+					
+				
+			
+		
+	
+	
+	
+
+	
+	
+	
+
+	
+	
+
+	
+
+	
+	
+		$('.js-tilt').tilt({
+			scale: 1.1
+		})
+	
+
+	
+
+
+
+
+2025-07-13 00:18:03,425 - INFO - Solved captcha: 4 + 10 = 14
+2025-07-13 00:18:04,439 - INFO - Filled captcha answer (method 2): 14
+2025-07-13 00:18:07,058 - INFO - Login successful, navigating to SMS data page for extraction
+2025-07-13 00:18:08,654 - INFO - Successfully navigated to SMSCDRStats for SMS extraction
+2025-07-13 00:18:08,655 - INFO - Successfully logged into SMS service
+2025-07-13 00:18:08,655 - INFO - ============================================================
+2025-07-13 00:18:08,655 - INFO - CHECKING EXISTING MESSAGES IN SMS SERVICE
+2025-07-13 00:18:08,655 - INFO - ============================================================
+2025-07-13 00:18:11,705 - INFO - Table info: Showing 1 to 2 of 2 entries
+2025-07-13 00:18:11,794 - INFO - Extracted 2 SMS records from table
+2025-07-13 00:18:11,794 - INFO - Found 2 existing messages:
+2025-07-13 00:18:11,794 - INFO - ------------------------------------------------------------
+2025-07-13 00:18:11,794 - INFO - Message 1:
+2025-07-13 00:18:11,795 - INFO -   Date: 2025-07-12 22:19:55
+2025-07-13 00:18:11,795 - INFO -   Range: Ghana
+2025-07-13 00:18:11,795 - INFO -   Number: 233200704879
+2025-07-13 00:18:11,795 - INFO -   CLI: AIRBNB
+2025-07-13 00:18:11,795 - INFO -   SMS: Your Airbnb verification code is 809418 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 00:18:11,795 - INFO -   Currency: $
+2025-07-13 00:18:11,795 - INFO -   Payout: 0
+2025-07-13 00:18:11,795 - INFO - ----------------------------------------
+2025-07-13 00:18:11,795 - INFO - Message 2:
+2025-07-13 00:18:11,795 - INFO -   Date: 2025-07-12 21:22:56
+2025-07-13 00:18:11,796 - INFO -   Range: Ghana
+2025-07-13 00:18:11,796 - INFO -   Number: 233201915227
+2025-07-13 00:18:11,796 - INFO -   CLI: AIRBNB
+2025-07-13 00:18:11,796 - INFO -   SMS: Your Airbnb verification code is 005646 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 00:18:11,796 - INFO -   Currency: $
+2025-07-13 00:18:11,796 - INFO -   Payout: 0
+2025-07-13 00:18:11,796 - INFO - ----------------------------------------
+2025-07-13 00:18:11,796 - INFO - ============================================================
+2025-07-13 00:18:11,796 - INFO - EXTRACTED VERIFICATION CODES:
+2025-07-13 00:18:11,796 - INFO - ============================================================
+2025-07-13 00:18:11,797 - INFO - Code 1:
+2025-07-13 00:18:11,797 - INFO -   Number: 233200704879
+2025-07-13 00:18:11,797 - INFO -   Code: 809418
+2025-07-13 00:18:11,797 - INFO -   Date: 2025-07-12 22:19:55
+2025-07-13 00:18:11,797 - INFO - ----------------------------------------
+2025-07-13 00:18:11,797 - INFO - Code 2:
+2025-07-13 00:18:11,797 - INFO -   Number: 233201915227
+2025-07-13 00:18:11,797 - INFO -   Code: 005646
+2025-07-13 00:18:11,797 - INFO -   Date: 2025-07-12 21:22:56
+2025-07-13 00:18:11,798 - INFO - ----------------------------------------
+2025-07-13 00:18:11,800 - INFO - Verification codes saved to verification_codes_20250713_001811.json
+2025-07-13 00:18:11,801 - INFO - All messages saved to sms_messages_20250713_001811.json
+2025-07-13 00:18:11,801 - INFO - ============================================================
+2025-07-13 00:18:11,801 - INFO - FINISHED CHECKING EXISTING MESSAGES
+2025-07-13 00:18:11,802 - INFO - ============================================================
+2025-07-13 00:18:11,802 - INFO - Found CSV file: Flyn SMS  My SMS Numbers.csv
+2025-07-13 00:18:11,804 - INFO - Successfully read 25 phone numbers from Flyn SMS  My SMS Numbers.csv
+2025-07-13 00:18:11,804 - INFO - CSV columns: ['Range', 'Prefix', 'Number', 'My Payterm', 'My Payout', 'Limits']
+2025-07-13 00:18:11,805 - INFO - ============================================================
+2025-07-13 00:18:11,805 - INFO - ANALYZING PHONE NUMBERS FROM CSV
+2025-07-13 00:18:11,805 - INFO - ============================================================
+2025-07-13 00:18:11,886 - INFO - Extracted 2 SMS records from table
+2025-07-13 00:18:11,886 - INFO - CSV contains 25 phone numbers
+2025-07-13 00:18:11,887 - INFO - SMS service has 2 messages
+2025-07-13 00:18:11,892 - INFO - Analyzing phone number 1: 233201915227
+2025-07-13 00:18:11,892 - INFO -   ✓ Found 1 message(s) for 233201915227
+2025-07-13 00:18:11,892 - INFO -     - CLI: AIRBNB, SMS: Your Airbnb verification code is 005646 Dont share...
+2025-07-13 00:18:11,892 - INFO - Analyzing phone number 2: 233200704879
+2025-07-13 00:18:11,892 - INFO -   ✓ Found 1 message(s) for 233200704879
+2025-07-13 00:18:11,892 - INFO -     - CLI: AIRBNB, SMS: Your Airbnb verification code is 809418 Dont share...
+2025-07-13 00:18:11,892 - INFO - Analyzing phone number 3: 233202322431
+2025-07-13 00:18:11,892 - INFO -   ✗ No messages found for 233202322431
+2025-07-13 00:18:11,893 - INFO - Analyzing phone number 4: 233203146752
+2025-07-13 00:18:11,893 - INFO -   ✗ No messages found for 233203146752
+2025-07-13 00:18:11,893 - INFO - Analyzing phone number 5: 233206767417
+2025-07-13 00:18:11,893 - INFO -   ✗ No messages found for 233206767417
+2025-07-13 00:18:11,893 - INFO - Analyzing phone number 6: 233209360486
+2025-07-13 00:18:11,894 - INFO -   ✗ No messages found for 233209360486
+2025-07-13 00:18:11,894 - INFO - Analyzing phone number 7: 233202160551
+2025-07-13 00:18:11,894 - INFO -   ✗ No messages found for 233202160551
+2025-07-13 00:18:11,894 - INFO - Analyzing phone number 8: 233203862710
+2025-07-13 00:18:11,894 - INFO -   ✗ No messages found for 233203862710
+2025-07-13 00:18:11,894 - INFO - Analyzing phone number 9: 233505409272
+2025-07-13 00:18:11,894 - INFO -   ✗ No messages found for 233505409272
+2025-07-13 00:18:11,894 - INFO - Analyzing phone number 10: 233205566936
+2025-07-13 00:18:11,894 - INFO -   ✗ No messages found for 233205566936
+2025-07-13 00:18:11,894 - INFO - Analyzing phone number 11: 233208215704
+2025-07-13 00:18:11,895 - INFO -   ✗ No messages found for 233208215704
+2025-07-13 00:18:11,895 - INFO - Analyzing phone number 12: 233205860171
+2025-07-13 00:18:11,895 - INFO -   ✗ No messages found for 233205860171
+2025-07-13 00:18:11,895 - INFO - Analyzing phone number 13: 233506826838
+2025-07-13 00:18:11,895 - INFO -   ✗ No messages found for 233506826838
+2025-07-13 00:18:11,895 - INFO - Analyzing phone number 14: 233204314525
+2025-07-13 00:18:11,895 - INFO -   ✗ No messages found for 233204314525
+2025-07-13 00:18:11,895 - INFO - Analyzing phone number 15: 233501885413
+2025-07-13 00:18:11,896 - INFO -   ✗ No messages found for 233501885413
+2025-07-13 00:18:11,896 - INFO - Analyzing phone number 16: 233206345942
+2025-07-13 00:18:11,896 - INFO -   ✗ No messages found for 233206345942
+2025-07-13 00:18:11,896 - INFO - Analyzing phone number 17: 233209768113
+2025-07-13 00:18:11,896 - INFO -   ✗ No messages found for 233209768113
+2025-07-13 00:18:11,896 - INFO - Analyzing phone number 18: 233501620322
+2025-07-13 00:18:11,896 - INFO -   ✗ No messages found for 233501620322
+2025-07-13 00:18:11,897 - INFO - Analyzing phone number 19: 233206006939
+2025-07-13 00:18:11,897 - INFO -   ✗ No messages found for 233206006939
+2025-07-13 00:18:11,897 - INFO - Analyzing phone number 20: 233500400929
+2025-07-13 00:18:11,897 - INFO -   ✗ No messages found for 233500400929
+2025-07-13 00:18:11,897 - INFO - Analyzing phone number 21: 233501161652
+2025-07-13 00:18:11,897 - INFO -   ✗ No messages found for 233501161652
+2025-07-13 00:18:11,897 - INFO - Analyzing phone number 22: 233205890245
+2025-07-13 00:18:11,897 - INFO -   ✗ No messages found for 233205890245
+2025-07-13 00:18:11,897 - INFO - Analyzing phone number 23: 233204234029
+2025-07-13 00:18:11,898 - INFO -   ✗ No messages found for 233204234029
+2025-07-13 00:18:11,898 - INFO - Analyzing phone number 24: 233209659487
+2025-07-13 00:18:11,898 - INFO -   ✗ No messages found for 233209659487
+2025-07-13 00:18:11,898 - INFO - Analyzing phone number 25: 233508452054
+2025-07-13 00:18:11,898 - INFO -   ✗ No messages found for 233508452054
+2025-07-13 00:18:11,899 - INFO - Analysis results saved to phone_analysis_20250713_001811.json
+2025-07-13 00:18:11,899 - INFO - Summary:
+2025-07-13 00:18:11,899 - INFO -   - Phone numbers with messages: 2
+2025-07-13 00:18:11,899 - INFO -   - Phone numbers without messages: 23
+2025-07-13 00:18:11,899 - INFO - ============================================================
+2025-07-13 00:18:11,899 - INFO - FINISHED ANALYZING PHONE NUMBERS
+2025-07-13 00:18:11,899 - INFO - ============================================================
+2025-07-13 00:20:16,273 - INFO - Browser initialized successfully
+2025-07-13 00:20:21,744 - INFO - Captcha text: 
+	
+	
+		
+			
+				
+				
+						
+					Login to Account
+					
+										
+						
+						
+						
+							
+						
+					
+
+					
+						
+						
+						
+							
+						
+					
+					
+					
+						What is 1 + 6 = ? : 
+					
+					
+					
+						
+							Login
+						
+					
+					
+
+				
+					
+					
+
+					
+				
+			
+		
+	
+	
+	
+
+	
+	
+	
+
+	
+	
+
+	
+
+	
+	
+		$('.js-tilt').tilt({
+			scale: 1.1
+		})
+	
+
+	
+
+
+
+
+2025-07-13 00:20:21,746 - INFO - Solved captcha: 1 + 6 = 7
+2025-07-13 00:20:22,766 - INFO - Filled captcha answer (method 2): 7
+2025-07-13 00:20:25,264 - INFO - Login successful, navigating to SMS data page for extraction
+2025-07-13 00:20:26,853 - INFO - Successfully navigated to SMSCDRStats for SMS extraction
+2025-07-13 00:20:26,853 - INFO - Successfully logged into SMS service
+2025-07-13 00:20:26,854 - INFO - ============================================================
+2025-07-13 00:20:26,854 - INFO - CHECKING EXISTING MESSAGES IN SMS SERVICE
+2025-07-13 00:20:26,854 - INFO - ============================================================
+2025-07-13 00:20:29,900 - INFO - Table info: Showing 1 to 2 of 2 entries
+2025-07-13 00:20:29,988 - INFO - Extracted 2 SMS records from table
+2025-07-13 00:20:29,989 - INFO - Found 2 existing messages:
+2025-07-13 00:20:29,989 - INFO - ------------------------------------------------------------
+2025-07-13 00:20:29,989 - INFO - Message 1:
+2025-07-13 00:20:29,989 - INFO -   Date: 2025-07-12 22:19:55
+2025-07-13 00:20:29,989 - INFO -   Range: Ghana
+2025-07-13 00:20:29,989 - INFO -   Number: 233200704879
+2025-07-13 00:20:29,989 - INFO -   CLI: AIRBNB
+2025-07-13 00:20:29,989 - INFO -   SMS: Your Airbnb verification code is 809418 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 00:20:29,989 - INFO -   Currency: $
+2025-07-13 00:20:29,990 - INFO -   Payout: 0
+2025-07-13 00:20:29,990 - INFO - ----------------------------------------
+2025-07-13 00:20:29,990 - INFO - Message 2:
+2025-07-13 00:20:29,990 - INFO -   Date: 2025-07-12 21:22:56
+2025-07-13 00:20:29,990 - INFO -   Range: Ghana
+2025-07-13 00:20:29,990 - INFO -   Number: 233201915227
+2025-07-13 00:20:29,990 - INFO -   CLI: AIRBNB
+2025-07-13 00:20:29,990 - INFO -   SMS: Your Airbnb verification code is 005646 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 00:20:29,990 - INFO -   Currency: $
+2025-07-13 00:20:29,990 - INFO -   Payout: 0
+2025-07-13 00:20:29,990 - INFO - ----------------------------------------
+2025-07-13 00:20:29,991 - INFO - ============================================================
+2025-07-13 00:20:29,991 - INFO - EXTRACTED VERIFICATION CODES:
+2025-07-13 00:20:29,991 - INFO - ============================================================
+2025-07-13 00:20:29,991 - INFO - Code 1:
+2025-07-13 00:20:29,991 - INFO -   Number: 233200704879
+2025-07-13 00:20:29,991 - INFO -   Code: 809418
+2025-07-13 00:20:29,991 - INFO -   Date: 2025-07-12 22:19:55
+2025-07-13 00:20:29,991 - INFO - ----------------------------------------
+2025-07-13 00:20:29,991 - INFO - Code 2:
+2025-07-13 00:20:29,991 - INFO -   Number: 233201915227
+2025-07-13 00:20:29,992 - INFO -   Code: 005646
+2025-07-13 00:20:29,992 - INFO -   Date: 2025-07-12 21:22:56
+2025-07-13 00:20:29,992 - INFO - ----------------------------------------
+2025-07-13 00:20:29,994 - INFO - Verification codes saved to verification_codes_20250713_002029.json
+2025-07-13 00:20:29,995 - INFO - All messages saved to sms_messages_20250713_002029.json
+2025-07-13 00:20:29,995 - INFO - ============================================================
+2025-07-13 00:20:29,995 - INFO - FINISHED CHECKING EXISTING MESSAGES
+2025-07-13 00:20:29,995 - INFO - ============================================================
+2025-07-13 00:20:29,995 - INFO - Found CSV file: Flyn SMS  My SMS Numbers.csv
+2025-07-13 00:20:29,997 - INFO - Successfully read 25 phone numbers from Flyn SMS  My SMS Numbers.csv
+2025-07-13 00:20:29,998 - INFO - CSV columns: ['Range', 'Prefix', 'Number', 'My Payterm', 'My Payout', 'Limits']
+2025-07-13 00:20:29,998 - INFO - ============================================================
+2025-07-13 00:20:29,998 - INFO - ANALYZING PHONE NUMBERS FROM CSV
+2025-07-13 00:20:29,998 - INFO - ============================================================
+2025-07-13 00:20:30,114 - INFO - Extracted 2 SMS records from table
+2025-07-13 00:20:30,114 - INFO - CSV contains 25 phone numbers
+2025-07-13 00:20:30,114 - INFO - SMS service has 2 messages
+2025-07-13 00:20:30,122 - INFO - Analyzing phone number 1: 233201915227
+2025-07-13 00:20:30,122 - INFO -   ✓ Found 1 message(s) for 233201915227
+2025-07-13 00:20:30,122 - INFO -     - CLI: AIRBNB, SMS: Your Airbnb verification code is 005646 Dont share...
+2025-07-13 00:20:30,122 - INFO - Analyzing phone number 2: 233200704879
+2025-07-13 00:20:30,123 - INFO -   ✓ Found 1 message(s) for 233200704879
+2025-07-13 00:20:30,123 - INFO -     - CLI: AIRBNB, SMS: Your Airbnb verification code is 809418 Dont share...
+2025-07-13 00:20:30,123 - INFO - Analyzing phone number 3: 233202322431
+2025-07-13 00:20:30,123 - INFO -   ✗ No messages found for 233202322431
+2025-07-13 00:20:30,123 - INFO - Analyzing phone number 4: 233203146752
+2025-07-13 00:20:30,123 - INFO -   ✗ No messages found for 233203146752
+2025-07-13 00:20:30,123 - INFO - Analyzing phone number 5: 233206767417
+2025-07-13 00:20:30,124 - INFO -   ✗ No messages found for 233206767417
+2025-07-13 00:20:30,124 - INFO - Analyzing phone number 6: 233209360486
+2025-07-13 00:20:30,124 - INFO -   ✗ No messages found for 233209360486
+2025-07-13 00:20:30,124 - INFO - Analyzing phone number 7: 233202160551
+2025-07-13 00:20:30,124 - INFO -   ✗ No messages found for 233202160551
+2025-07-13 00:20:30,124 - INFO - Analyzing phone number 8: 233203862710
+2025-07-13 00:20:30,124 - INFO -   ✗ No messages found for 233203862710
+2025-07-13 00:20:30,125 - INFO - Analyzing phone number 9: 233505409272
+2025-07-13 00:20:30,125 - INFO -   ✗ No messages found for 233505409272
+2025-07-13 00:20:30,125 - INFO - Analyzing phone number 10: 233205566936
+2025-07-13 00:20:30,125 - INFO -   ✗ No messages found for 233205566936
+2025-07-13 00:20:30,125 - INFO - Analyzing phone number 11: 233208215704
+2025-07-13 00:20:30,125 - INFO -   ✗ No messages found for 233208215704
+2025-07-13 00:20:30,125 - INFO - Analyzing phone number 12: 233205860171
+2025-07-13 00:20:30,125 - INFO -   ✗ No messages found for 233205860171
+2025-07-13 00:20:30,126 - INFO - Analyzing phone number 13: 233506826838
+2025-07-13 00:20:30,126 - INFO -   ✗ No messages found for 233506826838
+2025-07-13 00:20:30,126 - INFO - Analyzing phone number 14: 233204314525
+2025-07-13 00:20:30,126 - INFO -   ✗ No messages found for 233204314525
+2025-07-13 00:20:30,126 - INFO - Analyzing phone number 15: 233501885413
+2025-07-13 00:20:30,126 - INFO -   ✗ No messages found for 233501885413
+2025-07-13 00:20:30,126 - INFO - Analyzing phone number 16: 233206345942
+2025-07-13 00:20:30,126 - INFO -   ✗ No messages found for 233206345942
+2025-07-13 00:20:30,126 - INFO - Analyzing phone number 17: 233209768113
+2025-07-13 00:20:30,127 - INFO -   ✗ No messages found for 233209768113
+2025-07-13 00:20:30,127 - INFO - Analyzing phone number 18: 233501620322
+2025-07-13 00:20:30,127 - INFO -   ✗ No messages found for 233501620322
+2025-07-13 00:20:30,127 - INFO - Analyzing phone number 19: 233206006939
+2025-07-13 00:20:30,127 - INFO -   ✗ No messages found for 233206006939
+2025-07-13 00:20:30,127 - INFO - Analyzing phone number 20: 233500400929
+2025-07-13 00:20:30,127 - INFO -   ✗ No messages found for 233500400929
+2025-07-13 00:20:30,127 - INFO - Analyzing phone number 21: 233501161652
+2025-07-13 00:20:30,127 - INFO -   ✗ No messages found for 233501161652
+2025-07-13 00:20:30,127 - INFO - Analyzing phone number 22: 233205890245
+2025-07-13 00:20:30,127 - INFO -   ✗ No messages found for 233205890245
+2025-07-13 00:20:30,127 - INFO - Analyzing phone number 23: 233204234029
+2025-07-13 00:20:30,129 - INFO -   ✗ No messages found for 233204234029
+2025-07-13 00:20:30,129 - INFO - Analyzing phone number 24: 233209659487
+2025-07-13 00:20:30,129 - INFO -   ✗ No messages found for 233209659487
+2025-07-13 00:20:30,129 - INFO - Analyzing phone number 25: 233508452054
+2025-07-13 00:20:30,129 - INFO -   ✗ No messages found for 233508452054
+2025-07-13 00:20:30,130 - INFO - Analysis results saved to phone_analysis_20250713_002030.json
+2025-07-13 00:20:30,130 - INFO - Summary:
+2025-07-13 00:20:30,131 - INFO -   - Phone numbers with messages: 2
+2025-07-13 00:20:30,131 - INFO -   - Phone numbers without messages: 23
+2025-07-13 00:20:30,131 - INFO - ============================================================
+2025-07-13 00:20:30,131 - INFO - FINISHED ANALYZING PHONE NUMBERS
+2025-07-13 00:20:30,131 - INFO - ============================================================
+2025-07-13 00:20:30,258 - INFO - Browser closed successfully
