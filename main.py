@@ -12,6 +12,8 @@ import json
 import argparse
 import functools
 from tqdm import tqdm
+import random
+import string
 
 # Configure logging
 import sys
@@ -34,6 +36,42 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Airbnb country code mapping (partial, add more as needed)
+AIRBNB_COUNTRY_CODE_MAP = {
+    'Ghana': '233GH',
+    'Egypt': '20EG',
+    'United States': '1US',
+    'Nigeria': '234NG',
+    'United Kingdom': '44GB',
+    # Add more as needed
+}
+
+BROWSER_HEADERS = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'ar,en-US;q=0.9,en;q=0.8',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
+
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+]
+
+def random_name():
+    first = ''.join(random.choices(string.ascii_letters, k=6)).capitalize()
+    last = ''.join(random.choices(string.ascii_letters, k=8)).capitalize()
+    return first, last
+
+def random_email():
+    user = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+    domain = random.choice(['gmail.com', 'yahoo.com', 'outlook.com'])
+    return f"{user}@{domain}"
 
 class PlaywrightNotInitialized(Exception):
     pass
@@ -79,11 +117,18 @@ class SMSServiceHandler:
             headless=False,  # Set to True for production
             slow_mo=1000    # Slow down operations
         )
-        
-        # Create context for SMS service
-        self.sms_context = await self.browser.new_context()
-        
-        logger.info("Browser initialized successfully")
+        # Choose a random user agent for this session
+        user_agent = random.choice(USER_AGENTS)
+        # Merge headers, override User-Agent
+        headers = BROWSER_HEADERS.copy()
+        headers['User-Agent'] = user_agent
+        # Create context for SMS service with stealth headers
+        self.sms_context = await self.browser.new_context(
+            user_agent=user_agent,
+            extra_http_headers=headers,
+            locale='en-US'
+        )
+        logger.info(f"Browser initialized with User-Agent: {user_agent}")
     
     def find_csv_file(self) -> str:
         """Find CSV file in current directory"""
@@ -697,6 +742,229 @@ async def signup_airbnb_with_numbers(browser, phone_numbers: list, handler=None)
                 logger.warning(f'No verification code found for {phone_number} after refresh.')
         await page.close()
 
+async def get_fresh_verification_code_for_number(handler, sms_page, phone_number, timeout=120):
+    await sms_page.reload()
+    await sms_page.wait_for_load_state('networkidle')
+    initial_messages = await handler.extract_sms_data_from_table()
+    initial_count = len(initial_messages)
+    clean_phone = phone_number.replace('+', '').replace('-', '').replace(' ', '')
+    start_time = time.time()
+    signup_start_dt = datetime.now()
+    while time.time() - start_time < timeout:
+        await sms_page.reload()
+        await sms_page.wait_for_load_state('networkidle')
+        try:
+            await sms_page.wait_for_selector('#dt tbody', timeout=10000)
+        except:
+            await asyncio.sleep(5)
+            continue
+        sms_data = await handler.extract_sms_data_from_table()
+        current_count = len(sms_data)
+        if current_count > initial_count:
+            new_messages = sms_data[initial_count:]
+            for message in new_messages:
+                message_number = message['number'].replace('+', '').replace('-', '').replace(' ', '')
+                message_time_str = message.get('date', '').strip()
+                try:
+                    message_time = datetime.strptime(message_time_str, '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    message_time = signup_start_dt
+                if (message_time >= signup_start_dt and
+                    (clean_phone == message_number or 
+                     clean_phone in message_number or 
+                     message_number in clean_phone or
+                     clean_phone.endswith(message_number[-8:]) or 
+                     message_number.endswith(clean_phone[-8:]))):
+                    if message['cli'].upper() == 'AIRBNB':
+                        sms_text = message['sms']
+                        code_patterns = [
+                            r'verification code is (\d{6})',
+                            r'code is (\d{6})',
+                            r'code: (\d{6})',
+                            r'(\d{6})'
+                        ]
+                        for pattern in code_patterns:
+                            matches = re.findall(pattern, sms_text)
+                            if matches:
+                                return matches[0]
+            initial_count = current_count
+        await asyncio.sleep(5)
+    logger.warning(f'No new verification code found for {phone_number} after {timeout} seconds (checked by number and time)')
+    return None
+
+# --- Stealth/anti-detection improvements ---
+# For each signup, use a new incognito context, rotate user agent, set headers, and clear cookies/storage by context isolation.
+# (If Playwright Stealth plugin for Python becomes available, it should be used here for even better anti-detection.)
+
+# Proxy list for rotation (format: host:port)
+PROXIES = [
+    '88.198.212.91:3128',
+    '185.93.89.145:24666',
+    '43.131.9.114:1777',
+    '209.38.83.56:1088',
+    '222.59.173.105:44228',
+    '74.119.147.209:4145',
+    '192.95.33.162:1129',
+]
+
+async def create_full_airbnb_account_with_sms(playwright, handler, phone_number, country_name):
+    country_code_value = AIRBNB_COUNTRY_CODE_MAP.get(country_name, '20EG')
+    first_name, last_name = random_name()
+    email = random_email()
+    birthday = f"19{random.randint(80, 99)}-{random.randint(1,12):02d}-{random.randint(1,28):02d}"
+
+    # Remove country code prefix from phone_number for input
+    country_prefix = ''.join([c for c in country_code_value if c.isdigit()])
+    local_number = phone_number
+    if phone_number.startswith(country_prefix):
+        local_number = phone_number[len(country_prefix):]
+    local_number = local_number.lstrip('0').strip()
+
+    # --- Stealth: new browser, rotate user agent, set headers, clear cookies/storage, rotate proxy ---
+    user_agent = random.choice(USER_AGENTS)
+    headers = BROWSER_HEADERS.copy()
+    headers['User-Agent'] = user_agent
+    proxy_str = random.choice(PROXIES)
+    proxy_parts = proxy_str.split(':')
+    proxy_config = {
+        'server': f'http://{proxy_parts[0]}:{proxy_parts[1]}'
+    }
+    # No username/password for these proxies
+    logger.info(f"[STEALTH] Using User-Agent: {user_agent} | Proxy: {proxy_config['server']}")
+    browser = await playwright.chromium.launch(
+        headless=False,
+        slow_mo=1000,
+        proxy=proxy_config
+    )
+    context = await browser.new_context(
+        user_agent=user_agent,
+        extra_http_headers=headers,
+        locale='en-US'
+    )
+    # (If Playwright Stealth plugin for Python is available, apply it here)
+    airbnb_page = await context.new_page()
+    try:
+        await airbnb_page.goto('https://www.airbnb.com/signup_login')
+        await airbnb_page.wait_for_load_state('networkidle')
+    except Exception as e:
+        logger.error(f'Proxy failed or blocked for {proxy_config["server"]}: {e}')
+        await airbnb_page.close()
+        await context.close()
+        await browser.close()
+        return  # Skip to next number/proxy
+    try:
+        await airbnb_page.click('button[data-testid="signup-login-phone-tab"]')
+    except Exception:
+        pass
+    try:
+        await airbnb_page.select_option('select[data-testid="login-signup-countrycode"]', value=country_code_value)
+    except Exception as e:
+        logger.warning(f"Could not select country code: {e}")
+    try:
+        await airbnb_page.fill('input[name="phoneInputphone-login"]', local_number)
+        await airbnb_page.click('button[type="submit"]')
+        logger.info(f'Submitted signup for phone number: {local_number} (original: {phone_number})')
+    except Exception as e:
+        logger.error(f'Error submitting signup for {phone_number}: {e}')
+        await airbnb_page.close()
+        await context.close()
+        await browser.close()
+        return
+    # Wait for code input to appear (new selector)
+    try:
+        await airbnb_page.wait_for_selector('input#phone-verification-code-form__code-input', timeout=30000)
+    except Exception as e:
+        logger.error(f'Code input did not appear for {phone_number}: {e}')
+        await airbnb_page.close()
+        await context.close()
+        await browser.close()
+        return
+    # Open SMSCDRStats in a new tab and get code
+    sms_page = await context.new_page()
+    await sms_page.goto('http://91.232.105.47/ints/client/SMSCDRStats')
+    await sms_page.wait_for_load_state('networkidle')
+    code = await get_fresh_verification_code_for_number(handler, sms_page, phone_number, timeout=120)
+    await sms_page.close()
+    if not code:
+        logger.error(f'No verification code found for {phone_number}')
+        await airbnb_page.close()
+        await context.close()
+        await browser.close()
+        return
+    # Enter code in Airbnb (new selector)
+    try:
+        await airbnb_page.fill('input#phone-verification-code-form__code-input', code)
+        # Find the enabled Continue button and click it
+        buttons = await airbnb_page.query_selector_all('button')
+        for btn in buttons:
+            text = await btn.text_content()
+            disabled = await btn.get_attribute('disabled')
+            if text and 'Continue' in text and not disabled:
+                await btn.click()
+                break
+        logger.info(f'Entered verification code for {phone_number}: {code}')
+        # Check for max confirmation attempts error
+        await asyncio.sleep(2)
+        page_text = await airbnb_page.content()
+        if 'max confirmation attempts' in page_text.lower() or 'try again in 1 hour' in page_text.lower():
+            logger.warning(f'Max confirmation attempts reached for {phone_number}. Skipping this number for now.')
+            await airbnb_page.close()
+            await context.close()
+            await browser.close()
+            return
+    except Exception as e:
+        logger.error(f'Error entering verification code for {phone_number}: {e}')
+        await airbnb_page.close()
+        await context.close()
+        await browser.close()
+        return
+    # --- Complete the signup: Name, Email, Birthday ---
+    # 1. Name
+    try:
+        await airbnb_page.wait_for_selector('input[name="firstName"]', timeout=20000)
+        await airbnb_page.fill('input[name="firstName"]', first_name)
+        await airbnb_page.fill('input[name="lastName"]', last_name)
+        buttons = await airbnb_page.query_selector_all('button')
+        for btn in buttons:
+            text = await btn.text_content()
+            if text and ('Continue' in text or 'Next' in text):
+                await btn.click()
+                break
+        logger.info(f'Entered name for {phone_number}: {first_name} {last_name}')
+    except Exception as e:
+        logger.warning(f'Name step may be skipped or failed: {e}')
+    # 2. Email
+    try:
+        await airbnb_page.wait_for_selector('input[type="email"]', timeout=20000)
+        await airbnb_page.fill('input[type="email"]', email)
+        buttons = await airbnb_page.query_selector_all('button')
+        for btn in buttons:
+            text = await btn.text_content()
+            if text and ('Continue' in text or 'Next' in text):
+                await btn.click()
+                break
+        logger.info(f'Entered email for {phone_number}: {email}')
+    except Exception as e:
+        logger.warning(f'Email step may be skipped or failed: {e}')
+    # 3. Birthday
+    try:
+        await airbnb_page.wait_for_selector('input[name="birthdate"]', timeout=20000)
+        await airbnb_page.fill('input[name="birthdate"]', birthday)
+        buttons = await airbnb_page.query_selector_all('button')
+        for btn in buttons:
+            text = await btn.text_content()
+            if text and ('Continue' in text or 'Next' in text):
+                await btn.click()
+                break
+        logger.info(f'Entered birthday for {phone_number}: {birthday}')
+    except Exception as e:
+        logger.warning(f'Birthday step may be skipped or failed: {e}')
+    await asyncio.sleep(3)
+    logger.info(f'Account creation flow finished for {phone_number}')
+    await airbnb_page.close()
+    await context.close()
+    await browser.close()
+
 async def main():
     args = parse_args()
     # Update log level if provided via CLI
@@ -720,9 +988,12 @@ async def main():
                 df = handler.read_csv(csv_path)
                 await handler.analyze_phone_numbers(df)
                 # After analysis, automate Airbnb signup for each phone number and get verification code
-                phone_numbers = [str(row['Number']).strip() for _, row in df.iterrows()]
-                if handler.browser:
-                    await signup_airbnb_with_numbers(handler.browser, phone_numbers, handler=handler)
+                async with async_playwright() as playwright:
+                    for _, row in df.iterrows():
+                        phone_number = str(row['Number']).strip()
+                        country_name = str(row['Range']).strip()
+                        # If max confirmation attempts is hit, the function will log and skip to the next number
+                        await create_full_airbnb_account_with_sms(playwright, handler, phone_number, country_name)
             elif args.action == 'monitor':
                 await handler.display_existing_messages()
                 await handler.monitor_new_messages(duration_minutes=args.duration)
