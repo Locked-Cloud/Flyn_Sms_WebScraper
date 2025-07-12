@@ -642,6 +642,61 @@ def parse_args():
     parser.add_argument('--log-level', type=str, default=LOG_LEVEL, help='Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)')
     return parser.parse_args()
 
+async def signup_airbnb_with_numbers(browser, phone_numbers: list, handler=None):
+    for phone_number in phone_numbers:
+        page = await browser.new_page()
+        await page.goto('https://www.airbnb.com/signup_login')
+        await page.wait_for_load_state('networkidle')
+        # Click "Continue with phone" tab if needed
+        try:
+            await page.click('button[data-testid="signup-login-phone-tab"]')
+        except Exception:
+            pass  # If already on phone tab, ignore
+        # Fill the phone number
+        try:
+            await page.fill('input[name="phoneNumber"]', phone_number)
+            await page.click('button[type="submit"]')
+            logger.info(f'Submitted signup for phone number: {phone_number}')
+        except Exception as e:
+            logger.error(f'Error submitting signup for {phone_number}: {e}')
+        await asyncio.sleep(5)  # Wait for the code to arrive
+        # Refresh SMS data and get verification code
+        if handler is not None and handler.sms_page is not None:
+            await handler.sms_page.reload()  # type: ignore[reportAttributeAccessIssue]
+            await handler.sms_page.wait_for_load_state('networkidle')  # type: ignore[reportGeneralTypeIssues]
+            messages = await handler.extract_sms_data_from_table()
+            clean_phone = phone_number.replace('+', '').replace('-', '').replace(' ', '')
+            found_code = None
+            for message in messages:
+                message_number = message['number'].replace('+', '').replace('-', '').replace(' ', '')
+                if (clean_phone == message_number or 
+                    clean_phone in message_number or 
+                    message_number in clean_phone or
+                    clean_phone.endswith(message_number[-8:]) or 
+                    message_number.endswith(clean_phone[-8:])):
+                    if message['cli'].upper() == 'AIRBNB':
+                        sms_text = message['sms']
+                        import re
+                        code_patterns = [
+                            r'verification code is (\d{6})',
+                            r'code is (\d{6})',
+                            r'code: (\d{6})',
+                            r'(\d{6})'
+                        ]
+                        for pattern in code_patterns:
+                            matches = re.findall(pattern, sms_text)
+                            if matches:
+                                found_code = matches[0]
+                                break
+                if found_code:
+                    break
+            if found_code:
+                logger.info(f'Verification code for {phone_number}: {found_code}')
+                print(f'Verification code for {phone_number}: {found_code}')
+            else:
+                logger.warning(f'No verification code found for {phone_number} after refresh.')
+        await page.close()
+
 async def main():
     args = parse_args()
     # Update log level if provided via CLI
@@ -664,6 +719,10 @@ async def main():
                 await handler.display_existing_messages()
                 df = handler.read_csv(csv_path)
                 await handler.analyze_phone_numbers(df)
+                # After analysis, automate Airbnb signup for each phone number and get verification code
+                phone_numbers = [str(row['Number']).strip() for _, row in df.iterrows()]
+                if handler.browser:
+                    await signup_airbnb_with_numbers(handler.browser, phone_numbers, handler=handler)
             elif args.action == 'monitor':
                 await handler.display_existing_messages()
                 await handler.monitor_new_messages(duration_minutes=args.duration)
@@ -674,6 +733,11 @@ async def main():
                     logger.error('No phone numbers provided for test action.')
             else:
                 logger.error(f'Unknown action: {args.action}')
+            # After all SMS extraction/analysis, open Airbnb signup/login page in a new tab
+            if handler.browser:
+                airbnb_page = await handler.browser.new_page()  # This opens a new tab
+                await airbnb_page.goto('https://www.airbnb.com/signup_login')
+                logger.info('Opened Airbnb signup/login page in a new browser tab.')
         else:
             logger.error("Failed to login to SMS service")
     except Exception as e:
