@@ -4030,3 +4030,1056 @@ playwright._impl._errors.TargetClosedError: Target page, context or browser has 
 2025-07-13 02:43:42,992 - INFO - Interrupted by user. Exiting...
 2025-07-13 02:43:43,004 - ERROR - Task was destroyed but it is pending!
 task: <Task cancelling name='Task-1' coro=<main() done, defined at c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py:971> wait_for=<Future pending cb=[Task.task_wakeup()]> cb=[ProtocolCallback.__init__.<locals>.cb() at C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py:194, <8 more>, ProtocolCallback.__init__.<locals>.cb() at C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py:194]>
+2025-07-13 20:28:13,354 - INFO - Browser initialized with User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36
+2025-07-13 20:28:17,578 - INFO - Captcha text: 
+	
+	
+		
+			
+				
+				
+						
+					Login to Account
+					
+										
+						
+						
+						
+							
+						
+					
+
+					
+						
+						
+						
+							
+						
+					
+					
+					
+						What is 1 + 2 = ? : 
+					
+					
+					
+						
+							Login
+						
+					
+					
+
+				
+					
+					
+
+					
+				
+			
+		
+	
+	
+	
+
+	
+	
+	
+
+	
+	
+
+	
+
+	
+	
+		$('.js-tilt').tilt({
+			scale: 1.1
+		})
+	
+
+	
+
+
+
+
+2025-07-13 20:28:17,579 - INFO - Solved captcha: 1 + 2 = 3
+2025-07-13 20:28:18,599 - INFO - Filled captcha answer (method 2): 3
+2025-07-13 20:28:21,552 - INFO - Login successful, navigating to SMS data page for extraction
+2025-07-13 20:28:23,971 - INFO - Successfully navigated to SMSCDRStats for SMS extraction
+2025-07-13 20:28:23,972 - INFO - Successfully logged into SMS service
+2025-07-13 20:28:23,972 - INFO - ============================================================
+2025-07-13 20:28:23,972 - INFO - CHECKING EXISTING MESSAGES IN SMS SERVICE
+2025-07-13 20:28:23,972 - INFO - ============================================================
+2025-07-13 20:28:27,012 - INFO - Table info: Showing 1 to 3 of 3 entries
+2025-07-13 20:28:27,142 - INFO - Extracted 3 SMS records from table
+2025-07-13 20:28:27,142 - INFO - Found 3 existing messages:
+2025-07-13 20:28:27,143 - INFO - ------------------------------------------------------------
+2025-07-13 20:28:27,143 - INFO - Message 1:
+2025-07-13 20:28:27,143 - INFO -   Date: 2025-07-13 11:08:09
+2025-07-13 20:28:27,144 - INFO -   Range: Ghana
+2025-07-13 20:28:27,144 - INFO -   Number: 233505840729
+2025-07-13 20:28:27,144 - INFO -   CLI: Bolt Food
+2025-07-13 20:28:27,144 - INFO -   SMS: Bolt Courier app perks flexibility simplicity and weekly payouts Tap here to finish - httpscourierbolteusignup Unsubscribe httpootrsuTYrpA5E
+2025-07-13 20:28:27,144 - INFO -   Currency: $
+2025-07-13 20:28:27,144 - INFO -   Payout: 0
+2025-07-13 20:28:27,144 - INFO - ----------------------------------------
+2025-07-13 20:28:27,144 - INFO - Message 2:
+2025-07-13 20:28:27,145 - INFO -   Date: 2025-07-13 00:27:50
+2025-07-13 20:28:27,145 - INFO -   Range: Ghana
+2025-07-13 20:28:27,145 - INFO -   Number: 233200704879
+2025-07-13 20:28:27,145 - INFO -   CLI: AIRBNB
+2025-07-13 20:28:27,145 - INFO -   SMS: Your Airbnb verification code is 356127 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 20:28:27,145 - INFO -   Currency: $
+2025-07-13 20:28:27,145 - INFO -   Payout: 0
+2025-07-13 20:28:27,145 - INFO - ----------------------------------------
+2025-07-13 20:28:27,145 - INFO - Message 3:
+2025-07-13 20:28:27,145 - INFO -   Date: 2025-07-13 00:20:17
+2025-07-13 20:28:27,145 - INFO -   Range: Ghana
+2025-07-13 20:28:27,145 - INFO -   Number: 233201915227
+2025-07-13 20:28:27,146 - INFO -   CLI: AIRBNB
+2025-07-13 20:28:27,146 - INFO -   SMS: Your Airbnb verification code is 101989 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 20:28:27,146 - INFO -   Currency: $
+2025-07-13 20:28:27,146 - INFO -   Payout: 0
+2025-07-13 20:28:27,146 - INFO - ----------------------------------------
+2025-07-13 20:28:27,146 - INFO - ============================================================
+2025-07-13 20:28:27,146 - INFO - EXTRACTED VERIFICATION CODES:
+2025-07-13 20:28:27,146 - INFO - ============================================================
+2025-07-13 20:28:27,146 - INFO - Code 1:
+2025-07-13 20:28:27,146 - INFO -   Number: 233200704879
+2025-07-13 20:28:27,147 - INFO -   Code: 356127
+2025-07-13 20:28:27,147 - INFO -   Date: 2025-07-13 00:27:50
+2025-07-13 20:28:27,147 - INFO - ----------------------------------------
+2025-07-13 20:28:27,147 - INFO - Code 2:
+2025-07-13 20:28:27,147 - INFO -   Number: 233201915227
+2025-07-13 20:28:27,147 - INFO -   Code: 101989
+2025-07-13 20:28:27,147 - INFO -   Date: 2025-07-13 00:20:17
+2025-07-13 20:28:27,147 - INFO - ----------------------------------------
+2025-07-13 20:28:27,148 - INFO - Verification codes saved to verification_codes_20250713_202827.json
+2025-07-13 20:28:27,148 - INFO - All messages saved to sms_messages_20250713_202827.json
+2025-07-13 20:28:27,149 - INFO - ============================================================
+2025-07-13 20:28:27,149 - INFO - FINISHED CHECKING EXISTING MESSAGES
+2025-07-13 20:28:27,149 - INFO - ============================================================
+2025-07-13 20:28:27,149 - INFO - Found CSV file: Flyn SMS  My SMS Numbers.csv
+2025-07-13 20:28:27,154 - INFO - Successfully read 23 phone numbers from Flyn SMS  My SMS Numbers.csv
+2025-07-13 20:28:27,154 - INFO - CSV columns: ['Range', 'Prefix', 'Number', 'My Payterm', 'My Payout', 'Limits']
+2025-07-13 20:28:27,155 - INFO - ============================================================
+2025-07-13 20:28:27,155 - INFO - ANALYZING PHONE NUMBERS FROM CSV
+2025-07-13 20:28:27,155 - INFO - ============================================================
+2025-07-13 20:28:27,275 - INFO - Extracted 3 SMS records from table
+2025-07-13 20:28:27,275 - INFO - CSV contains 23 phone numbers
+2025-07-13 20:28:27,275 - INFO - SMS service has 3 messages
+2025-07-13 20:28:27,286 - INFO - Analyzing phone number 1: 233202322431
+2025-07-13 20:28:27,287 - INFO -   ✗ No messages found for 233202322431
+2025-07-13 20:28:27,287 - INFO - Analyzing phone number 2: 233203146752
+2025-07-13 20:28:27,287 - INFO -   ✗ No messages found for 233203146752
+2025-07-13 20:28:27,287 - INFO - Analyzing phone number 3: 233206767417
+2025-07-13 20:28:27,287 - INFO -   ✗ No messages found for 233206767417
+2025-07-13 20:28:27,287 - INFO - Analyzing phone number 4: 233209360486
+2025-07-13 20:28:27,287 - INFO -   ✗ No messages found for 233209360486
+2025-07-13 20:28:27,287 - INFO - Analyzing phone number 5: 233202160551
+2025-07-13 20:28:27,287 - INFO -   ✗ No messages found for 233202160551
+2025-07-13 20:28:27,288 - INFO - Analyzing phone number 6: 233203862710
+2025-07-13 20:28:27,288 - INFO -   ✗ No messages found for 233203862710
+2025-07-13 20:28:27,288 - INFO - Analyzing phone number 7: 233505409272
+2025-07-13 20:28:27,288 - INFO -   ✗ No messages found for 233505409272
+2025-07-13 20:28:27,288 - INFO - Analyzing phone number 8: 233205566936
+2025-07-13 20:28:27,288 - INFO -   ✗ No messages found for 233205566936
+2025-07-13 20:28:27,288 - INFO - Analyzing phone number 9: 233208215704
+2025-07-13 20:28:27,288 - INFO -   ✗ No messages found for 233208215704
+2025-07-13 20:28:27,288 - INFO - Analyzing phone number 10: 233205860171
+2025-07-13 20:28:27,288 - INFO -   ✗ No messages found for 233205860171
+2025-07-13 20:28:27,288 - INFO - Analyzing phone number 11: 233506826838
+2025-07-13 20:28:27,289 - INFO -   ✗ No messages found for 233506826838
+2025-07-13 20:28:27,289 - INFO - Analyzing phone number 12: 233204314525
+2025-07-13 20:28:27,289 - INFO -   ✗ No messages found for 233204314525
+2025-07-13 20:28:27,289 - INFO - Analyzing phone number 13: 233501885413
+2025-07-13 20:28:27,289 - INFO -   ✗ No messages found for 233501885413
+2025-07-13 20:28:27,289 - INFO - Analyzing phone number 14: 233206345942
+2025-07-13 20:28:27,289 - INFO -   ✗ No messages found for 233206345942
+2025-07-13 20:28:27,289 - INFO - Analyzing phone number 15: 233209768113
+2025-07-13 20:28:27,289 - INFO -   ✗ No messages found for 233209768113
+2025-07-13 20:28:27,289 - INFO - Analyzing phone number 16: 233501620322
+2025-07-13 20:28:27,289 - INFO -   ✗ No messages found for 233501620322
+2025-07-13 20:28:27,290 - INFO - Analyzing phone number 17: 233206006939
+2025-07-13 20:28:27,290 - INFO -   ✗ No messages found for 233206006939
+2025-07-13 20:28:27,290 - INFO - Analyzing phone number 18: 233500400929
+2025-07-13 20:28:27,290 - INFO -   ✗ No messages found for 233500400929
+2025-07-13 20:28:27,290 - INFO - Analyzing phone number 19: 233501161652
+2025-07-13 20:28:27,290 - INFO -   ✗ No messages found for 233501161652
+2025-07-13 20:28:27,290 - INFO - Analyzing phone number 20: 233205890245
+2025-07-13 20:28:27,290 - INFO -   ✗ No messages found for 233205890245
+2025-07-13 20:28:27,291 - INFO - Analyzing phone number 21: 233204234029
+2025-07-13 20:28:27,291 - INFO -   ✗ No messages found for 233204234029
+2025-07-13 20:28:27,291 - INFO - Analyzing phone number 22: 233209659487
+2025-07-13 20:28:27,291 - INFO -   ✗ No messages found for 233209659487
+2025-07-13 20:28:27,291 - INFO - Analyzing phone number 23: 233508452054
+2025-07-13 20:28:27,291 - INFO -   ✗ No messages found for 233508452054
+2025-07-13 20:28:27,292 - INFO - Analysis results saved to phone_analysis_20250713_202827.json
+2025-07-13 20:28:27,292 - INFO - Summary:
+2025-07-13 20:28:27,292 - INFO -   - Phone numbers with messages: 0
+2025-07-13 20:28:27,292 - INFO -   - Phone numbers without messages: 23
+2025-07-13 20:28:27,292 - INFO - ============================================================
+2025-07-13 20:28:27,293 - INFO - FINISHED ANALYZING PHONE NUMBERS
+2025-07-13 20:28:27,293 - INFO - ============================================================
+2025-07-13 20:28:27,532 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://74.119.147.209:4145
+2025-07-13 20:28:29,560 - ERROR - Proxy failed or blocked for http://74.119.147.209:4145: net::ERR_CONNECTION_RESET at https://www.airbnb.com/signup_login
+2025-07-13 20:28:29,661 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://74.119.147.209:4145
+2025-07-13 20:28:31,978 - ERROR - Proxy failed or blocked for http://74.119.147.209:4145: net::ERR_CONNECTION_RESET at https://www.airbnb.com/signup_login
+2025-07-13 20:28:32,112 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0 | Proxy: http://209.38.83.56:1088
+2025-07-13 20:28:34,426 - ERROR - Proxy failed or blocked for http://209.38.83.56:1088: net::ERR_EMPTY_RESPONSE at https://www.airbnb.com/signup_login
+2025-07-13 20:28:34,536 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0 | Proxy: http://88.198.212.91:3128
+2025-07-13 20:28:36,381 - ERROR - Proxy failed or blocked for http://88.198.212.91:3128: net::ERR_TUNNEL_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:28:36,489 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://192.95.33.162:1129
+2025-07-13 20:28:38,277 - ERROR - Proxy failed or blocked for http://192.95.33.162:1129: net::ERR_CONNECTION_RESET at https://www.airbnb.com/signup_login
+2025-07-13 20:28:38,355 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://209.38.83.56:1088
+2025-07-13 20:28:40,894 - ERROR - Proxy failed or blocked for http://209.38.83.56:1088: net::ERR_EMPTY_RESPONSE at https://www.airbnb.com/signup_login
+2025-07-13 20:28:41,005 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0 | Proxy: http://43.131.9.114:1777
+2025-07-13 20:28:43,687 - ERROR - Proxy failed or blocked for http://43.131.9.114:1777: net::ERR_ABORTED; maybe frame was detached?
+2025-07-13 20:28:43,776 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://185.93.89.145:24666
+2025-07-13 20:28:47,046 - ERROR - Error during cleanup: Target page, context or browser has been closed
+2025-07-13 20:29:53,754 - INFO - Browser initialized with User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0
+2025-07-13 20:29:58,065 - INFO - Captcha text: 
+	
+	
+		
+			
+				
+				
+						
+					Login to Account
+					
+										
+						
+						
+						
+							
+						
+					
+
+					
+						
+						
+						
+							
+						
+					
+					
+					
+						What is 4 + 9 = ? : 
+					
+					
+					
+						
+							Login
+						
+					
+					
+
+				
+					
+					
+
+					
+				
+			
+		
+	
+	
+	
+
+	
+	
+	
+
+	
+	
+
+	
+
+	
+	
+		$('.js-tilt').tilt({
+			scale: 1.1
+		})
+	
+
+	
+
+
+
+
+2025-07-13 20:29:58,068 - INFO - Solved captcha: 4 + 9 = 13
+2025-07-13 20:29:59,095 - INFO - Filled captcha answer (method 2): 13
+2025-07-13 20:30:01,903 - INFO - Login successful, navigating to SMS data page for extraction
+2025-07-13 20:30:04,515 - INFO - Successfully navigated to SMSCDRStats for SMS extraction
+2025-07-13 20:30:04,515 - INFO - Successfully logged into SMS service
+2025-07-13 20:30:04,515 - INFO - ============================================================
+2025-07-13 20:30:04,515 - INFO - CHECKING EXISTING MESSAGES IN SMS SERVICE
+2025-07-13 20:30:04,515 - INFO - ============================================================
+2025-07-13 20:30:07,551 - INFO - Table info: Showing 1 to 3 of 3 entries
+2025-07-13 20:30:07,684 - INFO - Extracted 3 SMS records from table
+2025-07-13 20:30:07,685 - INFO - Found 3 existing messages:
+2025-07-13 20:30:07,685 - INFO - ------------------------------------------------------------
+2025-07-13 20:30:07,685 - INFO - Message 1:
+2025-07-13 20:30:07,685 - INFO -   Date: 2025-07-13 11:08:09
+2025-07-13 20:30:07,685 - INFO -   Range: Ghana
+2025-07-13 20:30:07,685 - INFO -   Number: 233505840729
+2025-07-13 20:30:07,685 - INFO -   CLI: Bolt Food
+2025-07-13 20:30:07,685 - INFO -   SMS: Bolt Courier app perks flexibility simplicity and weekly payouts Tap here to finish - httpscourierbolteusignup Unsubscribe httpootrsuTYrpA5E
+2025-07-13 20:30:07,686 - INFO -   Currency: $
+2025-07-13 20:30:07,686 - INFO -   Payout: 0
+2025-07-13 20:30:07,686 - INFO - ----------------------------------------
+2025-07-13 20:30:07,686 - INFO - Message 2:
+2025-07-13 20:30:07,686 - INFO -   Date: 2025-07-13 00:27:50
+2025-07-13 20:30:07,686 - INFO -   Range: Ghana
+2025-07-13 20:30:07,686 - INFO -   Number: 233200704879
+2025-07-13 20:30:07,686 - INFO -   CLI: AIRBNB
+2025-07-13 20:30:07,686 - INFO -   SMS: Your Airbnb verification code is 356127 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 20:30:07,686 - INFO -   Currency: $
+2025-07-13 20:30:07,687 - INFO -   Payout: 0
+2025-07-13 20:30:07,687 - INFO - ----------------------------------------
+2025-07-13 20:30:07,687 - INFO - Message 3:
+2025-07-13 20:30:07,687 - INFO -   Date: 2025-07-13 00:20:17
+2025-07-13 20:30:07,687 - INFO -   Range: Ghana
+2025-07-13 20:30:07,687 - INFO -   Number: 233201915227
+2025-07-13 20:30:07,687 - INFO -   CLI: AIRBNB
+2025-07-13 20:30:07,687 - INFO -   SMS: Your Airbnb verification code is 101989 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 20:30:07,687 - INFO -   Currency: $
+2025-07-13 20:30:07,688 - INFO -   Payout: 0
+2025-07-13 20:30:07,688 - INFO - ----------------------------------------
+2025-07-13 20:30:07,688 - INFO - ============================================================
+2025-07-13 20:30:07,688 - INFO - EXTRACTED VERIFICATION CODES:
+2025-07-13 20:30:07,688 - INFO - ============================================================
+2025-07-13 20:30:07,688 - INFO - Code 1:
+2025-07-13 20:30:07,688 - INFO -   Number: 233200704879
+2025-07-13 20:30:07,689 - INFO -   Code: 356127
+2025-07-13 20:30:07,689 - INFO -   Date: 2025-07-13 00:27:50
+2025-07-13 20:30:07,689 - INFO - ----------------------------------------
+2025-07-13 20:30:07,689 - INFO - Code 2:
+2025-07-13 20:30:07,689 - INFO -   Number: 233201915227
+2025-07-13 20:30:07,689 - INFO -   Code: 101989
+2025-07-13 20:30:07,689 - INFO -   Date: 2025-07-13 00:20:17
+2025-07-13 20:30:07,690 - INFO - ----------------------------------------
+2025-07-13 20:30:07,690 - INFO - Verification codes saved to verification_codes_20250713_203007.json
+2025-07-13 20:30:07,691 - INFO - All messages saved to sms_messages_20250713_203007.json
+2025-07-13 20:30:07,691 - INFO - ============================================================
+2025-07-13 20:30:07,691 - INFO - FINISHED CHECKING EXISTING MESSAGES
+2025-07-13 20:30:07,691 - INFO - ============================================================
+2025-07-13 20:30:07,692 - INFO - Found CSV file: Flyn SMS  My SMS Numbers.csv
+2025-07-13 20:30:07,694 - INFO - Successfully read 23 phone numbers from Flyn SMS  My SMS Numbers.csv
+2025-07-13 20:30:07,694 - INFO - CSV columns: ['Range', 'Prefix', 'Number', 'My Payterm', 'My Payout', 'Limits']
+2025-07-13 20:30:07,694 - INFO - ============================================================
+2025-07-13 20:30:07,694 - INFO - ANALYZING PHONE NUMBERS FROM CSV
+2025-07-13 20:30:07,694 - INFO - ============================================================
+2025-07-13 20:30:07,816 - INFO - Extracted 3 SMS records from table
+2025-07-13 20:30:07,816 - INFO - CSV contains 23 phone numbers
+2025-07-13 20:30:07,816 - INFO - SMS service has 3 messages
+2025-07-13 20:30:07,820 - INFO - Analyzing phone number 1: 233202322431
+2025-07-13 20:30:07,820 - INFO -   ✗ No messages found for 233202322431
+2025-07-13 20:30:07,820 - INFO - Analyzing phone number 2: 233203146752
+2025-07-13 20:30:07,820 - INFO -   ✗ No messages found for 233203146752
+2025-07-13 20:30:07,820 - INFO - Analyzing phone number 3: 233206767417
+2025-07-13 20:30:07,820 - INFO -   ✗ No messages found for 233206767417
+2025-07-13 20:30:07,820 - INFO - Analyzing phone number 4: 233209360486
+2025-07-13 20:30:07,821 - INFO -   ✗ No messages found for 233209360486
+2025-07-13 20:30:07,821 - INFO - Analyzing phone number 5: 233202160551
+2025-07-13 20:30:07,821 - INFO -   ✗ No messages found for 233202160551
+2025-07-13 20:30:07,821 - INFO - Analyzing phone number 6: 233203862710
+2025-07-13 20:30:07,821 - INFO -   ✗ No messages found for 233203862710
+2025-07-13 20:30:07,821 - INFO - Analyzing phone number 7: 233505409272
+2025-07-13 20:30:07,821 - INFO -   ✗ No messages found for 233505409272
+2025-07-13 20:30:07,821 - INFO - Analyzing phone number 8: 233205566936
+2025-07-13 20:30:07,822 - INFO -   ✗ No messages found for 233205566936
+2025-07-13 20:30:07,822 - INFO - Analyzing phone number 9: 233208215704
+2025-07-13 20:30:07,822 - INFO -   ✗ No messages found for 233208215704
+2025-07-13 20:30:07,822 - INFO - Analyzing phone number 10: 233205860171
+2025-07-13 20:30:07,822 - INFO -   ✗ No messages found for 233205860171
+2025-07-13 20:30:07,822 - INFO - Analyzing phone number 11: 233506826838
+2025-07-13 20:30:07,822 - INFO -   ✗ No messages found for 233506826838
+2025-07-13 20:30:07,823 - INFO - Analyzing phone number 12: 233204314525
+2025-07-13 20:30:07,823 - INFO -   ✗ No messages found for 233204314525
+2025-07-13 20:30:07,823 - INFO - Analyzing phone number 13: 233501885413
+2025-07-13 20:30:07,823 - INFO -   ✗ No messages found for 233501885413
+2025-07-13 20:30:07,823 - INFO - Analyzing phone number 14: 233206345942
+2025-07-13 20:30:07,823 - INFO -   ✗ No messages found for 233206345942
+2025-07-13 20:30:07,823 - INFO - Analyzing phone number 15: 233209768113
+2025-07-13 20:30:07,823 - INFO -   ✗ No messages found for 233209768113
+2025-07-13 20:30:07,824 - INFO - Analyzing phone number 16: 233501620322
+2025-07-13 20:30:07,824 - INFO -   ✗ No messages found for 233501620322
+2025-07-13 20:30:07,824 - INFO - Analyzing phone number 17: 233206006939
+2025-07-13 20:30:07,824 - INFO -   ✗ No messages found for 233206006939
+2025-07-13 20:30:07,824 - INFO - Analyzing phone number 18: 233500400929
+2025-07-13 20:30:07,824 - INFO -   ✗ No messages found for 233500400929
+2025-07-13 20:30:07,824 - INFO - Analyzing phone number 19: 233501161652
+2025-07-13 20:30:07,824 - INFO -   ✗ No messages found for 233501161652
+2025-07-13 20:30:07,824 - INFO - Analyzing phone number 20: 233205890245
+2025-07-13 20:30:07,825 - INFO -   ✗ No messages found for 233205890245
+2025-07-13 20:30:07,825 - INFO - Analyzing phone number 21: 233204234029
+2025-07-13 20:30:07,825 - INFO -   ✗ No messages found for 233204234029
+2025-07-13 20:30:07,825 - INFO - Analyzing phone number 22: 233209659487
+2025-07-13 20:30:07,825 - INFO -   ✗ No messages found for 233209659487
+2025-07-13 20:30:07,825 - INFO - Analyzing phone number 23: 233508452054
+2025-07-13 20:30:07,825 - INFO -   ✗ No messages found for 233508452054
+2025-07-13 20:30:07,826 - INFO - Analysis results saved to phone_analysis_20250713_203007.json
+2025-07-13 20:30:07,826 - INFO - Summary:
+2025-07-13 20:30:07,826 - INFO -   - Phone numbers with messages: 0
+2025-07-13 20:30:07,826 - INFO -   - Phone numbers without messages: 23
+2025-07-13 20:30:07,827 - INFO - ============================================================
+2025-07-13 20:30:07,827 - INFO - FINISHED ANALYZING PHONE NUMBERS
+2025-07-13 20:30:07,827 - INFO - ============================================================
+2025-07-13 20:30:08,077 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0 | Proxy: http://88.198.212.91:3128
+2025-07-13 20:30:09,912 - ERROR - Proxy failed or blocked for http://88.198.212.91:3128: net::ERR_TUNNEL_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:30:10,040 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://222.59.173.105:44228
+2025-07-13 20:30:13,148 - ERROR - Proxy failed or blocked for http://222.59.173.105:44228: net::ERR_EMPTY_RESPONSE at https://www.airbnb.com/signup_login
+2025-07-13 20:30:13,267 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://88.198.212.91:3128
+2025-07-13 20:30:15,020 - ERROR - Proxy failed or blocked for http://88.198.212.91:3128: net::ERR_TUNNEL_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:30:15,112 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://192.95.33.162:1129
+2025-07-13 20:30:17,839 - ERROR - Proxy failed or blocked for http://192.95.33.162:1129: net::ERR_ABORTED; maybe frame was detached?
+2025-07-13 20:30:17,936 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://222.59.173.105:44228
+2025-07-13 20:30:19,485 - INFO - Interrupted by user. Exiting...
+2025-07-13 20:30:19,511 - ERROR - Future exception was never retrieved
+future: <Future finished exception=TargetClosedError('Target page, context or browser has been closed')>
+playwright._impl._errors.TargetClosedError: Target page, context or browser has been closed
+2025-07-13 20:30:48,675 - INFO - Browser initialized with User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0
+2025-07-13 20:30:52,898 - INFO - Captcha text: 
+	
+	
+		
+			
+				
+				
+						
+					Login to Account
+					
+										
+						
+						
+						
+							
+						
+					
+
+					
+						
+						
+						
+							
+						
+					
+					
+					
+						What is 3 + 0 = ? : 
+					
+					
+					
+						
+							Login
+						
+					
+					
+
+				
+					
+					
+
+					
+				
+			
+		
+	
+	
+	
+
+	
+	
+	
+
+	
+	
+
+	
+
+	
+	
+		$('.js-tilt').tilt({
+			scale: 1.1
+		})
+	
+
+	
+
+
+
+
+2025-07-13 20:30:52,899 - INFO - Solved captcha: 3 + 0 = 3
+2025-07-13 20:30:53,914 - INFO - Filled captcha answer (method 2): 3
+2025-07-13 20:30:56,767 - INFO - Login successful, navigating to SMS data page for extraction
+2025-07-13 20:30:59,279 - INFO - Successfully navigated to SMSCDRStats for SMS extraction
+2025-07-13 20:30:59,279 - INFO - Successfully logged into SMS service
+2025-07-13 20:30:59,279 - INFO - ============================================================
+2025-07-13 20:30:59,279 - INFO - CHECKING EXISTING MESSAGES IN SMS SERVICE
+2025-07-13 20:30:59,279 - INFO - ============================================================
+2025-07-13 20:31:02,322 - INFO - Table info: Showing 1 to 3 of 3 entries
+2025-07-13 20:31:02,440 - INFO - Extracted 3 SMS records from table
+2025-07-13 20:31:02,441 - INFO - Found 3 existing messages:
+2025-07-13 20:31:02,441 - INFO - ------------------------------------------------------------
+2025-07-13 20:31:02,441 - INFO - Message 1:
+2025-07-13 20:31:02,441 - INFO -   Date: 2025-07-13 11:08:09
+2025-07-13 20:31:02,441 - INFO -   Range: Ghana
+2025-07-13 20:31:02,441 - INFO -   Number: 233505840729
+2025-07-13 20:31:02,441 - INFO -   CLI: Bolt Food
+2025-07-13 20:31:02,441 - INFO -   SMS: Bolt Courier app perks flexibility simplicity and weekly payouts Tap here to finish - httpscourierbolteusignup Unsubscribe httpootrsuTYrpA5E
+2025-07-13 20:31:02,441 - INFO -   Currency: $
+2025-07-13 20:31:02,441 - INFO -   Payout: 0
+2025-07-13 20:31:02,442 - INFO - ----------------------------------------
+2025-07-13 20:31:02,442 - INFO - Message 2:
+2025-07-13 20:31:02,442 - INFO -   Date: 2025-07-13 00:27:50
+2025-07-13 20:31:02,442 - INFO -   Range: Ghana
+2025-07-13 20:31:02,442 - INFO -   Number: 233200704879
+2025-07-13 20:31:02,442 - INFO -   CLI: AIRBNB
+2025-07-13 20:31:02,442 - INFO -   SMS: Your Airbnb verification code is 356127 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 20:31:02,442 - INFO -   Currency: $
+2025-07-13 20:31:02,442 - INFO -   Payout: 0
+2025-07-13 20:31:02,442 - INFO - ----------------------------------------
+2025-07-13 20:31:02,443 - INFO - Message 3:
+2025-07-13 20:31:02,443 - INFO -   Date: 2025-07-13 00:20:17
+2025-07-13 20:31:02,443 - INFO -   Range: Ghana
+2025-07-13 20:31:02,443 - INFO -   Number: 233201915227
+2025-07-13 20:31:02,443 - INFO -   CLI: AIRBNB
+2025-07-13 20:31:02,443 - INFO -   SMS: Your Airbnb verification code is 101989 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 20:31:02,443 - INFO -   Currency: $
+2025-07-13 20:31:02,443 - INFO -   Payout: 0
+2025-07-13 20:31:02,444 - INFO - ----------------------------------------
+2025-07-13 20:31:02,444 - INFO - ============================================================
+2025-07-13 20:31:02,444 - INFO - EXTRACTED VERIFICATION CODES:
+2025-07-13 20:31:02,444 - INFO - ============================================================
+2025-07-13 20:31:02,444 - INFO - Code 1:
+2025-07-13 20:31:02,444 - INFO -   Number: 233200704879
+2025-07-13 20:31:02,444 - INFO -   Code: 356127
+2025-07-13 20:31:02,444 - INFO -   Date: 2025-07-13 00:27:50
+2025-07-13 20:31:02,444 - INFO - ----------------------------------------
+2025-07-13 20:31:02,444 - INFO - Code 2:
+2025-07-13 20:31:02,445 - INFO -   Number: 233201915227
+2025-07-13 20:31:02,445 - INFO -   Code: 101989
+2025-07-13 20:31:02,445 - INFO -   Date: 2025-07-13 00:20:17
+2025-07-13 20:31:02,445 - INFO - ----------------------------------------
+2025-07-13 20:31:02,445 - INFO - Verification codes saved to verification_codes_20250713_203102.json
+2025-07-13 20:31:02,446 - INFO - All messages saved to sms_messages_20250713_203102.json
+2025-07-13 20:31:02,446 - INFO - ============================================================
+2025-07-13 20:31:02,446 - INFO - FINISHED CHECKING EXISTING MESSAGES
+2025-07-13 20:31:02,446 - INFO - ============================================================
+2025-07-13 20:31:02,447 - INFO - Found CSV file: Flyn SMS  My SMS Numbers.csv
+2025-07-13 20:31:02,449 - INFO - Successfully read 23 phone numbers from Flyn SMS  My SMS Numbers.csv
+2025-07-13 20:31:02,449 - INFO - CSV columns: ['Range', 'Prefix', 'Number', 'My Payterm', 'My Payout', 'Limits']
+2025-07-13 20:31:02,449 - INFO - ============================================================
+2025-07-13 20:31:02,449 - INFO - ANALYZING PHONE NUMBERS FROM CSV
+2025-07-13 20:31:02,450 - INFO - ============================================================
+2025-07-13 20:31:02,558 - INFO - Extracted 3 SMS records from table
+2025-07-13 20:31:02,558 - INFO - CSV contains 23 phone numbers
+2025-07-13 20:31:02,558 - INFO - SMS service has 3 messages
+2025-07-13 20:31:02,563 - INFO - Analyzing phone number 1: 233202322431
+2025-07-13 20:31:02,563 - INFO -   ✗ No messages found for 233202322431
+2025-07-13 20:31:02,563 - INFO - Analyzing phone number 2: 233203146752
+2025-07-13 20:31:02,563 - INFO -   ✗ No messages found for 233203146752
+2025-07-13 20:31:02,563 - INFO - Analyzing phone number 3: 233206767417
+2025-07-13 20:31:02,563 - INFO -   ✗ No messages found for 233206767417
+2025-07-13 20:31:02,564 - INFO - Analyzing phone number 4: 233209360486
+2025-07-13 20:31:02,564 - INFO -   ✗ No messages found for 233209360486
+2025-07-13 20:31:02,564 - INFO - Analyzing phone number 5: 233202160551
+2025-07-13 20:31:02,564 - INFO -   ✗ No messages found for 233202160551
+2025-07-13 20:31:02,564 - INFO - Analyzing phone number 6: 233203862710
+2025-07-13 20:31:02,564 - INFO -   ✗ No messages found for 233203862710
+2025-07-13 20:31:02,564 - INFO - Analyzing phone number 7: 233505409272
+2025-07-13 20:31:02,564 - INFO -   ✗ No messages found for 233505409272
+2025-07-13 20:31:02,564 - INFO - Analyzing phone number 8: 233205566936
+2025-07-13 20:31:02,564 - INFO -   ✗ No messages found for 233205566936
+2025-07-13 20:31:02,565 - INFO - Analyzing phone number 9: 233208215704
+2025-07-13 20:31:02,565 - INFO -   ✗ No messages found for 233208215704
+2025-07-13 20:31:02,565 - INFO - Analyzing phone number 10: 233205860171
+2025-07-13 20:31:02,565 - INFO -   ✗ No messages found for 233205860171
+2025-07-13 20:31:02,565 - INFO - Analyzing phone number 11: 233506826838
+2025-07-13 20:31:02,565 - INFO -   ✗ No messages found for 233506826838
+2025-07-13 20:31:02,565 - INFO - Analyzing phone number 12: 233204314525
+2025-07-13 20:31:02,565 - INFO -   ✗ No messages found for 233204314525
+2025-07-13 20:31:02,565 - INFO - Analyzing phone number 13: 233501885413
+2025-07-13 20:31:02,566 - INFO -   ✗ No messages found for 233501885413
+2025-07-13 20:31:02,566 - INFO - Analyzing phone number 14: 233206345942
+2025-07-13 20:31:02,566 - INFO -   ✗ No messages found for 233206345942
+2025-07-13 20:31:02,566 - INFO - Analyzing phone number 15: 233209768113
+2025-07-13 20:31:02,566 - INFO -   ✗ No messages found for 233209768113
+2025-07-13 20:31:02,566 - INFO - Analyzing phone number 16: 233501620322
+2025-07-13 20:31:02,566 - INFO -   ✗ No messages found for 233501620322
+2025-07-13 20:31:02,566 - INFO - Analyzing phone number 17: 233206006939
+2025-07-13 20:31:02,566 - INFO -   ✗ No messages found for 233206006939
+2025-07-13 20:31:02,566 - INFO - Analyzing phone number 18: 233500400929
+2025-07-13 20:31:02,566 - INFO -   ✗ No messages found for 233500400929
+2025-07-13 20:31:02,567 - INFO - Analyzing phone number 19: 233501161652
+2025-07-13 20:31:02,567 - INFO -   ✗ No messages found for 233501161652
+2025-07-13 20:31:02,567 - INFO - Analyzing phone number 20: 233205890245
+2025-07-13 20:31:02,567 - INFO -   ✗ No messages found for 233205890245
+2025-07-13 20:31:02,567 - INFO - Analyzing phone number 21: 233204234029
+2025-07-13 20:31:02,567 - INFO -   ✗ No messages found for 233204234029
+2025-07-13 20:31:02,567 - INFO - Analyzing phone number 22: 233209659487
+2025-07-13 20:31:02,567 - INFO -   ✗ No messages found for 233209659487
+2025-07-13 20:31:02,567 - INFO - Analyzing phone number 23: 233508452054
+2025-07-13 20:31:02,567 - INFO -   ✗ No messages found for 233508452054
+2025-07-13 20:31:02,568 - INFO - Analysis results saved to phone_analysis_20250713_203102.json
+2025-07-13 20:31:02,568 - INFO - Summary:
+2025-07-13 20:31:02,569 - INFO -   - Phone numbers with messages: 0
+2025-07-13 20:31:02,569 - INFO -   - Phone numbers without messages: 23
+2025-07-13 20:31:02,569 - INFO - ============================================================
+2025-07-13 20:31:02,569 - INFO - FINISHED ANALYZING PHONE NUMBERS
+2025-07-13 20:31:02,569 - INFO - ============================================================
+2025-07-13 20:31:02,796 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0 | Proxy: http://188.245.189.170:38261 | Auth: UnfRm1
+2025-07-13 20:31:06,782 - ERROR - Proxy failed or blocked for http://188.245.189.170:38261: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:31:06,904 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://78.46.241.187:30115 | Auth: twoDZU
+2025-07-13 20:31:10,857 - ERROR - Proxy failed or blocked for http://78.46.241.187:30115: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:31:10,980 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://78.46.241.187:30115 | Auth: twoDZU
+2025-07-13 20:31:15,141 - ERROR - Proxy failed or blocked for http://78.46.241.187:30115: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:31:15,240 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0 | Proxy: http://78.46.241.187:34089 | Auth: 2f9AkE
+2025-07-13 20:31:18,772 - ERROR - Error during cleanup: Target page, context or browser has been closed
+2025-07-13 20:31:18,816 - ERROR - Future exception was never retrieved
+future: <Future finished exception=TargetClosedError('Target page, context or browser has been closed')>
+playwright._impl._errors.TargetClosedError: Target page, context or browser has been closed
+2025-07-13 20:33:14,842 - INFO - Testing all proxies for connectivity...
+2025-07-13 20:33:15,084 - INFO - Testing proxy: {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}
+2025-07-13 20:33:15,085 - ERROR - [ERROR] 78.46.241.187:30115:twoDZU:Y1BuRR - name 'ProxySettings' is not defined
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 851, in test_proxies_with_playwright
+    browser = p.chromium.launch(headless=True, proxy=cast(ProxySettings, proxy_config))
+                                                          ^^^^^^^^^^^^^
+NameError: name 'ProxySettings' is not defined
+2025-07-13 20:33:15,097 - INFO - Testing proxy: {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}
+2025-07-13 20:33:15,098 - ERROR - [ERROR] 188.245.189.170:38261:UnfRm1:NOnW41 - name 'ProxySettings' is not defined
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 851, in test_proxies_with_playwright
+    browser = p.chromium.launch(headless=True, proxy=cast(ProxySettings, proxy_config))
+                                                          ^^^^^^^^^^^^^
+NameError: name 'ProxySettings' is not defined
+2025-07-13 20:33:15,100 - INFO - Testing proxy: {'server': 'http://78.46.241.187:34089', 'username': '2f9AkE', 'password': 'mAOX2T'}
+2025-07-13 20:33:15,101 - ERROR - [ERROR] 78.46.241.187:34089:2f9AkE:mAOX2T - name 'ProxySettings' is not defined
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 851, in test_proxies_with_playwright
+    browser = p.chromium.launch(headless=True, proxy=cast(ProxySettings, proxy_config))
+                                                          ^^^^^^^^^^^^^
+NameError: name 'ProxySettings' is not defined
+2025-07-13 20:33:15,115 - INFO - Proxy test summary: 0 working, 3 failed
+2025-07-13 20:33:16,103 - INFO - Browser initialized with User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36
+2025-07-13 20:33:20,467 - INFO - Captcha text: 
+	
+	
+		
+			
+				
+				
+						
+					Login to Account
+					
+										
+						
+						
+						
+							
+						
+					
+
+					
+						
+						
+						
+							
+						
+					
+					
+					
+						What is 4 + 8 = ? : 
+					
+					
+					
+						
+							Login
+						
+					
+					
+
+				
+					
+					
+
+					
+				
+			
+		
+	
+	
+	
+
+	
+	
+	
+
+	
+	
+
+	
+
+	
+	
+		$('.js-tilt').tilt({
+			scale: 1.1
+		})
+	
+
+	
+
+
+
+
+2025-07-13 20:33:20,468 - INFO - Solved captcha: 4 + 8 = 12
+2025-07-13 20:33:21,499 - INFO - Filled captcha answer (method 2): 12
+2025-07-13 20:33:24,085 - INFO - Login successful, navigating to SMS data page for extraction
+2025-07-13 20:33:26,322 - INFO - Successfully navigated to SMSCDRStats for SMS extraction
+2025-07-13 20:33:26,322 - INFO - Successfully logged into SMS service
+2025-07-13 20:33:26,322 - INFO - ============================================================
+2025-07-13 20:33:26,323 - INFO - CHECKING EXISTING MESSAGES IN SMS SERVICE
+2025-07-13 20:33:26,323 - INFO - ============================================================
+2025-07-13 20:33:29,360 - INFO - Table info: Showing 1 to 3 of 3 entries
+2025-07-13 20:33:29,491 - INFO - Extracted 3 SMS records from table
+2025-07-13 20:33:29,491 - INFO - Found 3 existing messages:
+2025-07-13 20:33:29,491 - INFO - ------------------------------------------------------------
+2025-07-13 20:33:29,491 - INFO - Message 1:
+2025-07-13 20:33:29,491 - INFO -   Date: 2025-07-13 11:08:09
+2025-07-13 20:33:29,491 - INFO -   Range: Ghana
+2025-07-13 20:33:29,491 - INFO -   Number: 233505840729
+2025-07-13 20:33:29,491 - INFO -   CLI: Bolt Food
+2025-07-13 20:33:29,492 - INFO -   SMS: Bolt Courier app perks flexibility simplicity and weekly payouts Tap here to finish - httpscourierbolteusignup Unsubscribe httpootrsuTYrpA5E
+2025-07-13 20:33:29,492 - INFO -   Currency: $
+2025-07-13 20:33:29,492 - INFO -   Payout: 0
+2025-07-13 20:33:29,492 - INFO - ----------------------------------------
+2025-07-13 20:33:29,492 - INFO - Message 2:
+2025-07-13 20:33:29,492 - INFO -   Date: 2025-07-13 00:27:50
+2025-07-13 20:33:29,492 - INFO -   Range: Ghana
+2025-07-13 20:33:29,492 - INFO -   Number: 233200704879
+2025-07-13 20:33:29,493 - INFO -   CLI: AIRBNB
+2025-07-13 20:33:29,493 - INFO -   SMS: Your Airbnb verification code is 356127 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 20:33:29,493 - INFO -   Currency: $
+2025-07-13 20:33:29,493 - INFO -   Payout: 0
+2025-07-13 20:33:29,493 - INFO - ----------------------------------------
+2025-07-13 20:33:29,494 - INFO - Message 3:
+2025-07-13 20:33:29,494 - INFO -   Date: 2025-07-13 00:20:17
+2025-07-13 20:33:29,494 - INFO -   Range: Ghana
+2025-07-13 20:33:29,494 - INFO -   Number: 233201915227
+2025-07-13 20:33:29,494 - INFO -   CLI: AIRBNB
+2025-07-13 20:33:29,494 - INFO -   SMS: Your Airbnb verification code is 101989 Dont share this code with anyone; our employees will never ask for the code
+2025-07-13 20:33:29,494 - INFO -   Currency: $
+2025-07-13 20:33:29,494 - INFO -   Payout: 0
+2025-07-13 20:33:29,494 - INFO - ----------------------------------------
+2025-07-13 20:33:29,494 - INFO - ============================================================
+2025-07-13 20:33:29,495 - INFO - EXTRACTED VERIFICATION CODES:
+2025-07-13 20:33:29,495 - INFO - ============================================================
+2025-07-13 20:33:29,495 - INFO - Code 1:
+2025-07-13 20:33:29,495 - INFO -   Number: 233200704879
+2025-07-13 20:33:29,495 - INFO -   Code: 356127
+2025-07-13 20:33:29,495 - INFO -   Date: 2025-07-13 00:27:50
+2025-07-13 20:33:29,495 - INFO - ----------------------------------------
+2025-07-13 20:33:29,495 - INFO - Code 2:
+2025-07-13 20:33:29,495 - INFO -   Number: 233201915227
+2025-07-13 20:33:29,496 - INFO -   Code: 101989
+2025-07-13 20:33:29,496 - INFO -   Date: 2025-07-13 00:20:17
+2025-07-13 20:33:29,496 - INFO - ----------------------------------------
+2025-07-13 20:33:29,496 - INFO - Verification codes saved to verification_codes_20250713_203329.json
+2025-07-13 20:33:29,497 - INFO - All messages saved to sms_messages_20250713_203329.json
+2025-07-13 20:33:29,497 - INFO - ============================================================
+2025-07-13 20:33:29,497 - INFO - FINISHED CHECKING EXISTING MESSAGES
+2025-07-13 20:33:29,497 - INFO - ============================================================
+2025-07-13 20:33:29,498 - INFO - Found CSV file: Flyn SMS  My SMS Numbers.csv
+2025-07-13 20:33:29,500 - INFO - Successfully read 23 phone numbers from Flyn SMS  My SMS Numbers.csv
+2025-07-13 20:33:29,500 - INFO - CSV columns: ['Range', 'Prefix', 'Number', 'My Payterm', 'My Payout', 'Limits']
+2025-07-13 20:33:29,500 - INFO - ============================================================
+2025-07-13 20:33:29,500 - INFO - ANALYZING PHONE NUMBERS FROM CSV
+2025-07-13 20:33:29,500 - INFO - ============================================================
+2025-07-13 20:33:29,612 - INFO - Extracted 3 SMS records from table
+2025-07-13 20:33:29,612 - INFO - CSV contains 23 phone numbers
+2025-07-13 20:33:29,612 - INFO - SMS service has 3 messages
+2025-07-13 20:33:29,617 - INFO - Analyzing phone number 1: 233202322431
+2025-07-13 20:33:29,617 - INFO -   ✗ No messages found for 233202322431
+2025-07-13 20:33:29,618 - INFO - Analyzing phone number 2: 233203146752
+2025-07-13 20:33:29,618 - INFO -   ✗ No messages found for 233203146752
+2025-07-13 20:33:29,618 - INFO - Analyzing phone number 3: 233206767417
+2025-07-13 20:33:29,618 - INFO -   ✗ No messages found for 233206767417
+2025-07-13 20:33:29,618 - INFO - Analyzing phone number 4: 233209360486
+2025-07-13 20:33:29,618 - INFO -   ✗ No messages found for 233209360486
+2025-07-13 20:33:29,618 - INFO - Analyzing phone number 5: 233202160551
+2025-07-13 20:33:29,618 - INFO -   ✗ No messages found for 233202160551
+2025-07-13 20:33:29,619 - INFO - Analyzing phone number 6: 233203862710
+2025-07-13 20:33:29,619 - INFO -   ✗ No messages found for 233203862710
+2025-07-13 20:33:29,619 - INFO - Analyzing phone number 7: 233505409272
+2025-07-13 20:33:29,619 - INFO -   ✗ No messages found for 233505409272
+2025-07-13 20:33:29,619 - INFO - Analyzing phone number 8: 233205566936
+2025-07-13 20:33:29,619 - INFO -   ✗ No messages found for 233205566936
+2025-07-13 20:33:29,619 - INFO - Analyzing phone number 9: 233208215704
+2025-07-13 20:33:29,619 - INFO -   ✗ No messages found for 233208215704
+2025-07-13 20:33:29,619 - INFO - Analyzing phone number 10: 233205860171
+2025-07-13 20:33:29,620 - INFO -   ✗ No messages found for 233205860171
+2025-07-13 20:33:29,620 - INFO - Analyzing phone number 11: 233506826838
+2025-07-13 20:33:29,620 - INFO -   ✗ No messages found for 233506826838
+2025-07-13 20:33:29,620 - INFO - Analyzing phone number 12: 233204314525
+2025-07-13 20:33:29,620 - INFO -   ✗ No messages found for 233204314525
+2025-07-13 20:33:29,620 - INFO - Analyzing phone number 13: 233501885413
+2025-07-13 20:33:29,620 - INFO -   ✗ No messages found for 233501885413
+2025-07-13 20:33:29,620 - INFO - Analyzing phone number 14: 233206345942
+2025-07-13 20:33:29,620 - INFO -   ✗ No messages found for 233206345942
+2025-07-13 20:33:29,621 - INFO - Analyzing phone number 15: 233209768113
+2025-07-13 20:33:29,621 - INFO -   ✗ No messages found for 233209768113
+2025-07-13 20:33:29,621 - INFO - Analyzing phone number 16: 233501620322
+2025-07-13 20:33:29,621 - INFO -   ✗ No messages found for 233501620322
+2025-07-13 20:33:29,621 - INFO - Analyzing phone number 17: 233206006939
+2025-07-13 20:33:29,621 - INFO -   ✗ No messages found for 233206006939
+2025-07-13 20:33:29,621 - INFO - Analyzing phone number 18: 233500400929
+2025-07-13 20:33:29,621 - INFO -   ✗ No messages found for 233500400929
+2025-07-13 20:33:29,621 - INFO - Analyzing phone number 19: 233501161652
+2025-07-13 20:33:29,622 - INFO -   ✗ No messages found for 233501161652
+2025-07-13 20:33:29,622 - INFO - Analyzing phone number 20: 233205890245
+2025-07-13 20:33:29,622 - INFO -   ✗ No messages found for 233205890245
+2025-07-13 20:33:29,622 - INFO - Analyzing phone number 21: 233204234029
+2025-07-13 20:33:29,622 - INFO -   ✗ No messages found for 233204234029
+2025-07-13 20:33:29,622 - INFO - Analyzing phone number 22: 233209659487
+2025-07-13 20:33:29,622 - INFO -   ✗ No messages found for 233209659487
+2025-07-13 20:33:29,622 - INFO - Analyzing phone number 23: 233508452054
+2025-07-13 20:33:29,622 - INFO -   ✗ No messages found for 233508452054
+2025-07-13 20:33:29,623 - INFO - Analysis results saved to phone_analysis_20250713_203329.json
+2025-07-13 20:33:29,623 - INFO - Summary:
+2025-07-13 20:33:29,623 - INFO -   - Phone numbers with messages: 0
+2025-07-13 20:33:29,623 - INFO -   - Phone numbers without messages: 23
+2025-07-13 20:33:29,624 - INFO - ============================================================
+2025-07-13 20:33:29,624 - INFO - FINISHED ANALYZING PHONE NUMBERS
+2025-07-13 20:33:29,624 - INFO - ============================================================
+2025-07-13 20:33:29,911 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://78.46.241.187:30115 | Auth: twoDZU
+2025-07-13 20:33:29,912 - INFO - Trying proxy config: {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}
+2025-07-13 20:33:33,972 - ERROR - Proxy failed or blocked for {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:33:38,799 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0 | Proxy: http://78.46.241.187:30115 | Auth: twoDZU
+2025-07-13 20:33:38,799 - INFO - Trying proxy config: {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}
+2025-07-13 20:33:43,609 - ERROR - Proxy failed or blocked for {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:33:43,699 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://188.245.189.170:38261 | Auth: UnfRm1
+2025-07-13 20:33:43,700 - INFO - Trying proxy config: {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}
+2025-07-13 20:33:47,681 - ERROR - Proxy failed or blocked for {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:33:47,765 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://188.245.189.170:38261 | Auth: UnfRm1
+2025-07-13 20:33:47,765 - INFO - Trying proxy config: {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}
+2025-07-13 20:33:51,751 - ERROR - Proxy failed or blocked for {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:33:51,838 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://188.245.189.170:38261 | Auth: UnfRm1
+2025-07-13 20:33:51,839 - INFO - Trying proxy config: {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}
+2025-07-13 20:33:55,792 - ERROR - Proxy failed or blocked for {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:33:55,895 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://78.46.241.187:30115 | Auth: twoDZU
+2025-07-13 20:33:55,896 - INFO - Trying proxy config: {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}
+2025-07-13 20:33:59,877 - ERROR - Proxy failed or blocked for {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:33:59,964 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://78.46.241.187:30115 | Auth: twoDZU
+2025-07-13 20:33:59,964 - INFO - Trying proxy config: {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}
+2025-07-13 20:34:03,980 - ERROR - Proxy failed or blocked for {'server': 'http://78.46.241.187:30115', 'username': 'twoDZU', 'password': 'Y1BuRR'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:34:04,079 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://188.245.189.170:38261 | Auth: UnfRm1
+2025-07-13 20:34:04,080 - INFO - Trying proxy config: {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}
+2025-07-13 20:34:08,148 - ERROR - Proxy failed or blocked for {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:34:08,272 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36 | Proxy: http://188.245.189.170:38261 | Auth: UnfRm1
+2025-07-13 20:34:08,272 - INFO - Trying proxy config: {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}
+2025-07-13 20:34:12,269 - ERROR - Proxy failed or blocked for {'server': 'http://188.245.189.170:38261', 'username': 'UnfRm1', 'password': 'NOnW41'}: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_PROXY_CONNECTION_FAILED at https://www.airbnb.com/signup_login
+2025-07-13 20:34:12,373 - INFO - [STEALTH] Using User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 | Proxy: http://78.46.241.187:34089 | Auth: 2f9AkE
+2025-07-13 20:34:12,373 - INFO - Trying proxy config: {'server': 'http://78.46.241.187:34089', 'username': '2f9AkE', 'password': 'mAOX2T'}
+2025-07-13 20:34:15,954 - ERROR - Proxy failed or blocked for {'server': 'http://78.46.241.187:34089', 'username': '2f9AkE', 'password': 'mAOX2T'}: net::ERR_ABORTED; maybe frame was detached?
+Traceback (most recent call last):
+  File "c:\Users\Ibrahim Ahmed\Desktop\Code\Python\Number Auto\main.py", line 915, in create_full_airbnb_account_with_sms
+    await airbnb_page.goto('https://www.airbnb.com/signup_login')
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 9260, in goto
+    await self._impl_obj.goto(
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 475, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 139, in goto
+    await self._channel.send("goto", locals_to_params(locals()))
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 62, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 492, in wrap_api_call
+    return await cb()
+           ^^^^^^^^^^
+  File "C:\Users\Ibrahim Ahmed\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 100, in inner_send
+    result = next(iter(done)).result()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+playwright._impl._errors.Error: net::ERR_ABORTED; maybe frame was detached?

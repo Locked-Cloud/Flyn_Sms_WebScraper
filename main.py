@@ -5,7 +5,7 @@ import time
 import os
 import glob
 from playwright.async_api import async_playwright, Page, BrowserContext
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, cast
 import logging
 from datetime import datetime
 import json
@@ -14,11 +14,53 @@ import functools
 from tqdm import tqdm
 import random
 import string
+import traceback
+from pydantic_settings import BaseSettings
+from sqlalchemy.orm import declarative_base
+from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy.orm import sessionmaker
+import structlog
+from tenacity import retry, stop_after_attempt, wait_exponential
+import dotenv
 
 # Configure logging
 import sys
 
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+dotenv.load_dotenv()
+
+class Settings(BaseSettings):  # type: ignore[reportGeneralTypeIssues]
+    sms_username: str
+    sms_password: str
+    db_url: str = "sqlite:///sms.db"
+    log_level: str = "INFO"
+    proxy_file: str = "proxies_clean.txt"
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()  # type: ignore[reportGeneralTypeIssues]
+
+
+# Database setup
+Base = declarative_base()
+engine = create_engine(settings.db_url, echo=False, future=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+from datetime import datetime as dt
+
+class SMSMessage(Base):
+    __tablename__ = "sms_messages"
+    id = Column(Integer, primary_key=True, index=True)
+    number = Column(String, index=True)
+    code = Column(String)
+    cli = Column(String)
+    sms = Column(String)
+    received_at = Column(DateTime, default=dt.utcnow)
+
+# Create tables if they don't exist
+Base.metadata.create_all(bind=engine)
+
+LOG_LEVEL = settings.log_level
 LOG_FILE = 'sms_service.log'
 
 # Will be overridden by CLI if provided
@@ -27,15 +69,13 @@ if '--log-level' in sys.argv:
     if idx + 1 < len(sys.argv):
         LOG_LEVEL = sys.argv[idx + 1].upper()
 
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL, logging.INFO),
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
+structlog.configure(
+    processors=[
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer()
     ]
 )
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 # Airbnb country code mapping (partial, add more as needed)
 AIRBNB_COUNTRY_CODE_MAP = {
@@ -75,6 +115,10 @@ def random_email():
 
 class PlaywrightNotInitialized(Exception):
     pass
+
+class ProxyError(Exception): pass
+class CaptchaError(Exception): pass
+class LoginError(Exception): pass
 
 def load_config() -> dict:
     """Load configuration from config.json or environment variables."""
@@ -209,6 +253,7 @@ class SMSServiceHandler:
             logger.error(f"Error solving captcha: {e}")
             return "10"
     
+    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def login_to_sms_service(self) -> bool:
         """Login to SMS service"""
         async def _login():
@@ -359,6 +404,56 @@ class SMSServiceHandler:
             except:
                 pass
             existing_messages = await self.extract_sms_data_from_table()
+            # Save messages to the database
+            with SessionLocal() as db:
+                for message in existing_messages:
+                    # Try to extract code if CLI is AIRBNB
+                    code = None
+                    if message['cli'].upper() == 'AIRBNB':
+                        sms_text = message['sms']
+                        code_patterns = [
+                            r'verification code is (\d{6})',
+                            r'code is (\d{6})',
+                            r'code: (\d{6})',
+                            r'(\d{6})'
+                        ]
+                        for pattern in code_patterns:
+                            matches = re.findall(pattern, sms_text)
+                            if matches:
+                                code = matches[0]
+                                break
+                    # Check if message already exists
+                    exists = db.query(SMSMessage).filter_by(
+                        number=message['number'],
+                        cli=message['cli'],
+                        sms=message['sms'],
+                        received_at=message['date']
+                    ).first()
+                    if not exists:
+                        db.add(SMSMessage(
+                            number=message['number'],
+                            code=code,
+                            cli=message['cli'],
+                            sms=message['sms'],
+                            received_at=message['date']
+                        ))
+                    else:
+                        # Update code if not set
+                        if code and not getattr(exists, "code", None):
+                            exists.code = code
+                db.commit()
+            # --- JSON output removed: DB is now the source of truth ---
+            # if verification_codes:
+            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            #     codes_filename = f'verification_codes_{timestamp}.json'
+            #     with open(codes_filename, 'w', encoding='utf-8') as f:
+            #         json.dump(verification_codes, f, ensure_ascii=False, indent=2)
+            #     logger.info(f"Verification codes saved to {codes_filename}")
+            # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # filename = f'sms_messages_{timestamp}.json'
+            # with open(filename, 'w', encoding='utf-8') as f:
+            #     json.dump(existing_messages, f, ensure_ascii=False, indent=2)
+            # logger.info(f"All messages saved to {filename}")
             if existing_messages:
                 logger.info(f"Found {len(existing_messages)} existing messages:")
                 logger.info("-" * 60)
@@ -372,46 +467,46 @@ class SMSServiceHandler:
                     logger.info(f"  Currency: {message['currency']}")
                     logger.info(f"  Payout: {message['payout']}")
                     logger.info("-" * 40)
-                verification_codes = []
-                for message in existing_messages:
-                    if message['cli'].upper() == 'AIRBNB':
-                        sms_text = message['sms']
-                        code_patterns = [
-                            r'verification code is (\d{6})',
-                            r'code is (\d{6})',
-                            r'code: (\d{6})',
-                            r'(\d{6})'
-                        ]
-                        for pattern in code_patterns:
-                            matches = re.findall(pattern, sms_text)
-                            if matches:
-                                verification_codes.append({
-                                    'number': message['number'],
-                                    'code': matches[0],
-                                    'date': message['date'],
-                                    'full_sms': sms_text
-                                })
-                                break
-                if verification_codes:
-                    logger.info("=" * 60)
-                    logger.info("EXTRACTED VERIFICATION CODES:")
-                    logger.info("=" * 60)
-                    for i, code_info in enumerate(verification_codes, 1):
-                        logger.info(f"Code {i}:")
-                        logger.info(f"  Number: {code_info['number']}")
-                        logger.info(f"  Code: {code_info['code']}")
-                        logger.info(f"  Date: {code_info['date']}")
-                        logger.info("-" * 40)
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    codes_filename = f'verification_codes_{timestamp}.json'
-                    with open(codes_filename, 'w', encoding='utf-8') as f:
-                        json.dump(verification_codes, f, ensure_ascii=False, indent=2)
-                    logger.info(f"Verification codes saved to {codes_filename}")
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f'sms_messages_{timestamp}.json'
-                with open(filename, 'w', encoding='utf-8') as f:
-                    json.dump(existing_messages, f, ensure_ascii=False, indent=2)
-                logger.info(f"All messages saved to {filename}")
+                # verification_codes = [] # Removed as per edit hint
+                # for message in existing_messages: # Removed as per edit hint
+                #     if message['cli'].upper() == 'AIRBNB': # Removed as per edit hint
+                #         sms_text = message['sms'] # Removed as per edit hint
+                #         code_patterns = [ # Removed as per edit hint
+                #             r'verification code is (\d{6})', # Removed as per edit hint
+                #             r'code is (\d{6})', # Removed as per edit hint
+                #             r'code: (\d{6})', # Removed as per edit hint
+                #             r'(\d{6})' # Removed as per edit hint
+                #         ] # Removed as per edit hint
+                #         for pattern in code_patterns: # Removed as per edit hint
+                #             matches = re.findall(pattern, sms_text) # Removed as per edit hint
+                #             if matches: # Removed as per edit hint
+                #                 verification_codes.append({ # Removed as per edit hint
+                #                     'number': message['number'], # Removed as per edit hint
+                #                     'code': matches[0], # Removed as per edit hint
+                #                     'date': message['date'], # Removed as per edit hint
+                #                     'full_sms': sms_text # Removed as per edit hint
+                #                 }) # Removed as per edit hint
+                #                 break # Removed as per edit hint
+                # if verification_codes: # Removed as per edit hint
+                #     logger.info("=" * 60) # Removed as per edit hint
+                #     logger.info("EXTRACTED VERIFICATION CODES:") # Removed as per edit hint
+                #     logger.info("=" * 60) # Removed as per edit hint
+                #     for i, code_info in enumerate(verification_codes, 1): # Removed as per edit hint
+                #         logger.info(f"Code {i}:") # Removed as per edit hint
+                #         logger.info(f"  Number: {code_info['number']}") # Removed as per edit hint
+                #         logger.info(f"  Code: {code_info['code']}") # Removed as per edit hint
+                #         logger.info(f"  Date: {code_info['date']}") # Removed as per edit hint
+                #         logger.info("-" * 40) # Removed as per edit hint
+                #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") # Removed as per edit hint
+                #     codes_filename = f'verification_codes_{timestamp}.json' # Removed as per edit hint
+                #     with open(codes_filename, 'w', encoding='utf-8') as f: # Removed as per edit hint
+                #         json.dump(verification_codes, f, ensure_ascii=False, indent=2) # Removed as per edit hint
+                #     logger.info(f"Verification codes saved to {codes_filename}") # Removed as per edit hint
+                # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") # Removed as per edit hint
+                # filename = f'sms_messages_{timestamp}.json' # Removed as per edit hint
+                # with open(filename, 'w', encoding='utf-8') as f: # Removed as per edit hint
+                #     json.dump(existing_messages, f, ensure_ascii=False, indent=2) # Removed as per edit hint
+                # logger.info(f"All messages saved to {filename}") # Removed as per edit hint
             else:
                 logger.info("No existing messages found in the table")
             logger.info("=" * 60)
@@ -586,11 +681,11 @@ class SMSServiceHandler:
                             logger.info(f"  Currency: {message['currency']}")
                             logger.info(f"  Payout: {message['payout']}")
                             logger.info("-" * 40)
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        filename = f'new_sms_messages_{timestamp}.json'
-                        with open(filename, 'w', encoding='utf-8') as f:
-                            json.dump(new_messages, f, ensure_ascii=False, indent=2)
-                        logger.info(f"New messages saved to {filename}")
+                        # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") # Removed as per edit hint
+                        # filename = f'new_sms_messages_{timestamp}.json' # Removed as per edit hint
+                        # with open(filename, 'w', encoding='utf-8') as f: # Removed as per edit hint
+                        #     json.dump(new_messages, f, ensure_ascii=False, indent=2) # Removed as per edit hint
+                        # logger.info(f"New messages saved to {filename}") # Removed as per edit hint
                         initial_count = current_count
                     else:
                         logger.info(f"No new messages. Current count: {current_count}")
@@ -796,8 +891,87 @@ async def get_fresh_verification_code_for_number(handler, sms_page, phone_number
 # For each signup, use a new incognito context, rotate user agent, set headers, and clear cookies/storage by context isolation.
 # (If Playwright Stealth plugin for Python becomes available, it should be used here for even better anti-detection.)
 
-# Proxy list for rotation (format: host:port)
-PROXIES = [
+# --- Proxy Management ---
+# class ProxyManager:
+#     def __init__(self, proxies):
+#         self.proxies = proxies
+#         self.health = {proxy: True for proxy in proxies}
+#         self.index = 0
+#
+#     def get_proxy(self):
+#         healthy = [p for p in self.proxies if self.health.get(p, True)]
+#         if not healthy:
+#             healthy = self.proxies
+#         proxy = healthy[self.index % len(healthy)]
+#         self.index += 1
+#         return proxy
+#
+#     def mark_bad(self, proxy):
+#         self.health[proxy] = False
+
+# --- Disable proxy testing at startup ---
+# if os.path.exists(RAW_PROXY_FILE):
+#     extracted = extract_proxies(RAW_PROXY_FILE, CLEAN_PROXY_FILE)
+#     if extracted is not None:
+#         PROXIES = extracted
+#     else:
+#         PROXIES = FALLBACK_PROXIES
+# else:
+#     PROXIES = FALLBACK_PROXIES
+# proxy_manager = ProxyManager(PROXIES)
+
+# --- Stealth Script Stub ---
+async def apply_stealth(page):
+    # Stub: In production, inject stealth JS here
+    pass
+
+# --- 2Captcha Stub ---
+def solve_captcha_with_2captcha(image_bytes, api_key):
+    # Stub: Integrate with 2captcha API here
+    return None
+
+# --- Update test_proxies_with_playwright ---
+def test_proxies_with_playwright(proxies, test_url='https://www.airbnb.com/'):
+    from playwright.sync_api import sync_playwright
+    logger.info('Testing all proxies for connectivity...')
+    working = []
+    failed = []
+    with sync_playwright() as p:
+        for proxy_str in proxies:
+            proxy_parts = proxy_str.split(':')
+            proxy_config = {
+                'server': f'http://{proxy_parts[0]}:{proxy_parts[1]}'
+            }
+            if len(proxy_parts) == 4:
+                proxy_config['username'] = proxy_parts[2]
+                proxy_config['password'] = proxy_parts[3]
+            logger.info(f'Testing proxy: {proxy_config}')
+            try:
+                browser = p.chromium.launch(headless=True, proxy=proxy_config)  # type: ignore
+                context = browser.new_context()
+                page = context.new_page()
+                response = page.goto(test_url, timeout=15000)
+                status = response.status if response else None
+                if status and 200 <= status < 400:
+                    logger.info(f'[OK] {proxy_str} (Status: {status})')
+                    working.append(proxy_str)
+                else:
+                    logger.warning(f'[FAIL] {proxy_str} (Status: {status})')
+                    failed.append(proxy_str)
+                page.close()
+                context.close()
+                browser.close()
+            except Exception as e:
+                logger.error(f'[ERROR] {proxy_str} - {e}', exc_info=True)
+                failed.append(proxy_str)
+    logger.info(f'Proxy test summary: {len(working)} working, {len(failed)} failed')
+    return working, failed
+
+# --- Use ProxyManager in main logic ---
+# Replace PROXIES with ProxyManager
+CLEAN_PROXY_FILE = 'proxies_clean.txt'
+RAW_PROXY_FILE = 'proxies_raw.txt'
+FALLBACK_PROXIES = [
     '88.198.212.91:3128',
     '185.93.89.145:24666',
     '43.131.9.114:1777',
@@ -807,47 +981,77 @@ PROXIES = [
     '192.95.33.162:1129',
 ]
 
+def extract_proxies(raw_file='proxies_raw.txt', clean_file='proxies_clean.txt'):
+    """Extract proxy credentials from a raw proxy list and save to a clean file."""
+    if not os.path.exists(raw_file):
+        return None
+    proxies = []
+    with open(raw_file, 'r', encoding='utf-8') as infile, open(clean_file, 'w', encoding='utf-8') as outfile:
+        for line in infile:
+            proxy = line.split('|')[0].strip()
+            if proxy:
+                proxies.append(proxy)
+                outfile.write(proxy + '\n')
+    return proxies
+
+# if os.path.exists(RAW_PROXY_FILE):
+#     extracted = extract_proxies(RAW_PROXY_FILE, CLEAN_PROXY_FILE)
+#     if extracted is not None:
+#         PROXIES = extracted
+#     else:
+#         PROXIES = FALLBACK_PROXIES
+# else:
+#     PROXIES = FALLBACK_PROXIES
+# proxy_manager = ProxyManager(PROXIES)
+
+# --- Refactor create_full_airbnb_account_with_sms to rotate proxy and user-agent ---
 async def create_full_airbnb_account_with_sms(playwright, handler, phone_number, country_name):
     country_code_value = AIRBNB_COUNTRY_CODE_MAP.get(country_name, '20EG')
     first_name, last_name = random_name()
     email = random_email()
     birthday = f"19{random.randint(80, 99)}-{random.randint(1,12):02d}-{random.randint(1,28):02d}"
 
-    # Remove country code prefix from phone_number for input
     country_prefix = ''.join([c for c in country_code_value if c.isdigit()])
     local_number = phone_number
     if phone_number.startswith(country_prefix):
         local_number = phone_number[len(country_prefix):]
     local_number = local_number.lstrip('0').strip()
 
-    # --- Stealth: new browser, rotate user agent, set headers, clear cookies/storage, rotate proxy ---
     user_agent = random.choice(USER_AGENTS)
     headers = BROWSER_HEADERS.copy()
     headers['User-Agent'] = user_agent
-    proxy_str = random.choice(PROXIES)
-    proxy_parts = proxy_str.split(':')
-    proxy_config = {
-        'server': f'http://{proxy_parts[0]}:{proxy_parts[1]}'
-    }
-    # No username/password for these proxies
-    logger.info(f"[STEALTH] Using User-Agent: {user_agent} | Proxy: {proxy_config['server']}")
-    browser = await playwright.chromium.launch(
-        headless=False,
-        slow_mo=1000,
-        proxy=proxy_config
-    )
+    # proxy_str = proxy_manager.get_proxy()
+    # proxy_parts = proxy_str.split(':')
+    # proxy_config = {
+    #     'server': f'http://{proxy_parts[0]}:{proxy_parts[1]}'
+    # }
+    # if len(proxy_parts) == 4:
+    #     proxy_config['username'] = proxy_parts[2]
+    #     proxy_config['password'] = proxy_parts[3]
+    logger.info(f"[STEALTH] Using User-Agent: {user_agent} | Proxy: DISABLED")
+    # logger.info(f"Trying proxy config: {proxy_config}")
+    try:
+        browser = await playwright.chromium.launch(
+            headless=False,
+            slow_mo=1000
+            # , proxy=proxy_config  # Proxy disabled
+        )
+    except Exception as e:
+        logger.error(f'Browser failed to launch: {e}', exc_info=True)
+        # proxy_manager.mark_bad(proxy_str)  # Proxy disabled
+        return
     context = await browser.new_context(
         user_agent=user_agent,
         extra_http_headers=headers,
         locale='en-US'
     )
-    # (If Playwright Stealth plugin for Python is available, apply it here)
     airbnb_page = await context.new_page()
+    await apply_stealth(airbnb_page)
     try:
         await airbnb_page.goto('https://www.airbnb.com/signup_login')
         await airbnb_page.wait_for_load_state('networkidle')
     except Exception as e:
-        logger.error(f'Proxy failed or blocked for {proxy_config["server"]}: {e}')
+        logger.error(f'Proxy failed or blocked for {e}', exc_info=True)
         await airbnb_page.close()
         await context.close()
         await browser.close()
@@ -965,10 +1169,22 @@ async def create_full_airbnb_account_with_sms(playwright, handler, phone_number,
     await context.close()
     await browser.close()
 
+MAX_CONCURRENT_TASKS = 5  # Adjust as needed for rate limiting
+semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
+
+async def phone_worker(queue, handler, playwright):
+    while True:
+        phone_number, country_name = await queue.get()
+        async with semaphore:
+            try:
+                await create_full_airbnb_account_with_sms(playwright, handler, phone_number, country_name)
+            except Exception as e:
+                logger.error(f"Worker error for {phone_number}: {e}")
+        queue.task_done()
+
 async def main():
     args = parse_args()
-    # Update log level if provided via CLI
-    logger.setLevel(getattr(logging, args.log_level.upper(), logging.INFO))
+    # logger.setLevel(getattr(logging, args.log_level.upper(), logging.INFO))  # Removed: not supported by structlog
     config = load_config()
     SMS_USERNAME = args.username or config.get('SMS_USERNAME', '')
     SMS_PASSWORD = args.password or config.get('SMS_PASSWORD', '')
@@ -987,13 +1203,16 @@ async def main():
                 await handler.display_existing_messages()
                 df = handler.read_csv(csv_path)
                 await handler.analyze_phone_numbers(df)
-                # After analysis, automate Airbnb signup for each phone number and get verification code
                 async with async_playwright() as playwright:
+                    queue = asyncio.Queue()
                     for _, row in df.iterrows():
                         phone_number = str(row['Number']).strip()
                         country_name = str(row['Range']).strip()
-                        # If max confirmation attempts is hit, the function will log and skip to the next number
-                        await create_full_airbnb_account_with_sms(playwright, handler, phone_number, country_name)
+                        await queue.put((phone_number, country_name))
+                    workers = [asyncio.create_task(phone_worker(queue, handler, playwright)) for _ in range(MAX_CONCURRENT_TASKS)]
+                    await queue.join()
+                    for w in workers:
+                        w.cancel()
             elif args.action == 'monitor':
                 await handler.display_existing_messages()
                 await handler.monitor_new_messages(duration_minutes=args.duration)
@@ -1004,9 +1223,8 @@ async def main():
                     logger.error('No phone numbers provided for test action.')
             else:
                 logger.error(f'Unknown action: {args.action}')
-            # After all SMS extraction/analysis, open Airbnb signup/login page in a new tab
             if handler.browser:
-                airbnb_page = await handler.browser.new_page()  # This opens a new tab
+                airbnb_page = await handler.browser.new_page()
                 await airbnb_page.goto('https://www.airbnb.com/signup_login')
                 logger.info('Opened Airbnb signup/login page in a new browser tab.')
         else:
@@ -1017,7 +1235,6 @@ async def main():
         traceback.print_exc()
     finally:
         await handler.cleanup()
-        # Explicitly close the asyncio event loop to avoid Windows resource warnings
         try:
             loop = asyncio.get_running_loop()
             if loop.is_running():
@@ -1026,6 +1243,8 @@ async def main():
             pass
 
 if __name__ == "__main__":
+    # Test all proxies before running main automation
+    # test_proxies_with_playwright(PROXIES) # Proxy disabled
     import sys
     if os.name == 'nt':
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -1033,8 +1252,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info('Interrupted by user. Exiting...')
-    finally:
-        # Clean up all handlers
-        for handler in logger.handlers[:]:
-            handler.close()
-            logger.removeHandler(handler)
