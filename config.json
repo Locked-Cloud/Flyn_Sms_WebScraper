@@ -1,4 +1,34 @@
 {
-  "SMS_USERNAME": "Cloudy",
-  "SMS_PASSWORD": "600600"
+  "sms_service": {
+    "username": "Cloudy",
+    "password": "600600",
+    "base_url": "http://91.232.105.47/ints",
+    "timeout": 30,
+    "max_retries": 3
+  },
+  "airbnb": {
+    "signup_url": "https://www.airbnb.com/signup_login",
+    "max_attempts_per_number": 3,
+    "wait_between_attempts": 5,
+    "timeout": 60
+  },
+  "proxy": {
+    "enabled": false,
+    "test_url": "https://www.airbnb.com/",
+    "test_timeout": 15,
+    "rotate_every": 10
+  },
+  "database": {
+    "url": "sqlite:///sms.db",
+    "echo": false
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "sms_service.log",
+    "format": "json"
+  },
+  "concurrency": {
+    "max_workers": 5,
+    "batch_size": 10
+  }
 }

@@ -4,10 +4,10 @@ import re
 import time
 import os
 import glob
-from playwright.async_api import async_playwright, Page, BrowserContext
-from typing import Optional, List, Dict, cast
+from playwright.async_api import async_playwright, Page, BrowserContext, TimeoutError as PlaywrightTimeout
+from typing import Optional, List, Dict, Any, Tuple, Union
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import argparse
 import functools
@@ -15,1240 +15,2019 @@ from tqdm import tqdm
 import random
 import string
 import traceback
+from pydantic import BaseModel, Field, validator
 from pydantic_settings import BaseSettings
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, Float
+from sqlalchemy.orm import sessionmaker, Session
 import structlog
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import dotenv
-
-# Configure logging
+import aiohttp
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.logging import RichHandler
+from rich.table import Table
+from pathlib import Path
 import sys
+from dataclasses import dataclass
+from enum import Enum
+import hashlib
+import uuid
+from contextlib import asynccontextmanager
 
+# Load environment variables
 dotenv.load_dotenv()
 
-class Settings(BaseSettings):  # type: ignore[reportGeneralTypeIssues]
-    sms_username: str
-    sms_password: str
-    db_url: str = "sqlite:///sms.db"
-    log_level: str = "INFO"
-    proxy_file: str = "proxies_clean.txt"
+# Initialize console for rich output
+console = Console()
 
-    class Config:
-        env_file = ".env"
+class ServiceType(str, Enum):
+    UBER = "uber"
+    AIRBNB = "airbnb"
+    LYFT = "lyft"
+    DOORDASH = "doordash"
 
-settings = Settings()  # type: ignore[reportGeneralTypeIssues]
+class MessageStatus(str, Enum):
+    PENDING = "pending"
+    RECEIVED = "received"
+    FAILED = "failed"
+    EXPIRED = "expired"
 
+@dataclass
+class VerificationResult:
+    phone_number: str
+    service: ServiceType
+    success: bool
+    code: Optional[str] = None
+    error: Optional[str] = None
+    timestamp: datetime = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.utcnow()
 
-# Database setup
+# Enhanced configuration with better validation
+class SMSServiceConfig(BaseModel):
+    username: str = Field(..., description="SMS service username")
+    password: str = Field(..., description="SMS service password")
+    base_url: str = Field("http://91.232.105.47/ints", description="Base URL for SMS service")
+    timeout: int = Field(30, description="Timeout for SMS service requests", ge=10, le=300)
+    max_retries: int = Field(3, description="Maximum number of retries", ge=1, le=10)
+    session_timeout: int = Field(3600, description="Session timeout in seconds", ge=300)
+
+class ServiceConfig(BaseModel):
+    signup_urls: Dict[ServiceType, str] = Field(default={
+        ServiceType.UBER: "https://auth.uber.com/login/",
+        ServiceType.AIRBNB: "https://www.airbnb.com/signup_login",
+        ServiceType.LYFT: "https://account.lyft.com/signup",
+        ServiceType.DOORDASH: "https://identity.doordash.com/auth/user/signup"
+    })
+    max_attempts_per_number: int = Field(3, description="Maximum attempts per phone number", ge=1, le=10)
+    wait_between_attempts: int = Field(5, description="Wait time between attempts", ge=1, le=60)
+    verification_timeout: int = Field(180, description="Timeout for verification code", ge=30, le=600)
+    rate_limit_delay: Tuple[float, float] = Field((2.0, 8.0), description="Random delay range between requests")
+
+class ProxyConfig(BaseModel):
+    enabled: bool = Field(False, description="Whether to use proxies")
+    proxy_list: List[str] = Field(default=[], description="List of proxy servers")
+    test_url: str = Field("https://httpbin.org/ip", description="URL to test proxies")
+    test_timeout: int = Field(15, description="Timeout for proxy testing", ge=5, le=60)
+    rotate_every: int = Field(5, description="Number of requests before rotating proxy", ge=1, le=50)
+    health_check_interval: int = Field(300, description="Proxy health check interval in seconds")
+
+class DatabaseConfig(BaseModel):
+    url: str = Field("sqlite:///enhanced_sms.db", description="Database URL")
+    echo: bool = Field(False, description="Echo SQL statements")
+    pool_size: int = Field(20, description="Connection pool size", ge=5, le=100)
+    pool_timeout: int = Field(30, description="Pool timeout", ge=10, le=300)
+
+class BrowserConfig(BaseModel):
+    headless: bool = Field(True, description="Run browser in headless mode")
+    slow_mo: int = Field(100, description="Slow motion delay", ge=0, le=5000)
+    viewport_width: int = Field(1920, description="Browser viewport width", ge=800, le=3840)
+    viewport_height: int = Field(1080, description="Browser viewport height", ge=600, le=2160)
+    user_agent_rotation: bool = Field(True, description="Rotate user agents")
+    stealth_mode: bool = Field(True, description="Enable stealth mode")
+
+class ConcurrencyConfig(BaseModel):
+    max_workers: int = Field(3, description="Maximum concurrent workers", ge=1, le=20)
+    batch_size: int = Field(10, description="Batch size for processing", ge=1, le=100)
+    queue_timeout: int = Field(300, description="Queue timeout in seconds", ge=60, le=1800)
+
+class Config(BaseModel):
+    sms_service: SMSServiceConfig
+    services: ServiceConfig
+    proxy: ProxyConfig
+    database: DatabaseConfig
+    browser: BrowserConfig
+    concurrency: ConcurrencyConfig
+    
+    @classmethod
+    def load_from_file(cls, path: str = "config.json") -> "Config":
+        """Load configuration with better error handling and defaults"""
+        try:
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    data = json.load(f)
+                return cls(**data)
+            else:
+                console.print(f"[yellow]Config file {path} not found, creating default config[/]")
+                config = cls.create_default()
+                config.save_to_file(path)
+                return config
+        except Exception as e:
+            console.print(f"[red]Error loading config: {e}[/]")
+            return cls.create_default()
+    
+    @classmethod
+    def create_default(cls) -> "Config":
+        """Create default configuration"""
+        return cls(
+            sms_service=SMSServiceConfig(
+                username=os.getenv("SMS_USERNAME", ""),
+                password=os.getenv("SMS_PASSWORD", "")
+            ),
+            services=ServiceConfig(),
+            proxy=ProxyConfig(),
+            database=DatabaseConfig(),
+            browser=BrowserConfig(),
+            concurrency=ConcurrencyConfig()
+        )
+    
+    def save_to_file(self, path: str = "config.json"):
+        """Save configuration to file"""
+        with open(path, "w") as f:
+            json.dump(self.dict(), f, indent=2, default=str)
+
+# Load configuration
+config = Config.load_from_file()
+
+# Enhanced database models
 Base = declarative_base()
-engine = create_engine(settings.db_url, echo=False, future=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-
-from datetime import datetime as dt
 
 class SMSMessage(Base):
     __tablename__ = "sms_messages"
+    
     id = Column(Integer, primary_key=True, index=True)
-    number = Column(String, index=True)
-    code = Column(String)
-    cli = Column(String)
-    sms = Column(String)
-    received_at = Column(DateTime, default=dt.utcnow)
+    phone_number = Column(String, index=True, nullable=False)
+    service_type = Column(String, index=True, nullable=False)
+    verification_code = Column(String, nullable=True)
+    cli = Column(String, index=True)
+    sms_content = Column(Text)
+    status = Column(String, default=MessageStatus.PENDING)
+    received_at = Column(DateTime, default=datetime.utcnow)
+    processed_at = Column(DateTime, nullable=True)
+    attempts = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+    session_id = Column(String, index=True)
+    success_rate = Column(Float, default=0.0)
+    
+class PhoneNumber(Base):
+    __tablename__ = "phone_numbers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    number = Column(String, unique=True, index=True, nullable=False)
+    country = Column(String, nullable=False)
+    country_code = Column(String, nullable=False)
+    status = Column(String, default="active")
+    success_count = Column(Integer, default=0)
+    failure_count = Column(Integer, default=0)
+    last_used = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-# Create tables if they don't exist
-Base.metadata.create_all(bind=engine)
+class ProxyServer(Base):
+    __tablename__ = "proxy_servers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    host = Column(String, nullable=False)
+    port = Column(Integer, nullable=False)
+    username = Column(String, nullable=True)
+    password = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    success_rate = Column(Float, default=1.0)
+    last_tested = Column(DateTime, nullable=True)
+    response_time = Column(Float, nullable=True)
 
-LOG_LEVEL = settings.log_level
-LOG_FILE = 'sms_service.log'
-
-# Will be overridden by CLI if provided
-if '--log-level' in sys.argv:
-    idx = sys.argv.index('--log-level')
-    if idx + 1 < len(sys.argv):
-        LOG_LEVEL = sys.argv[idx + 1].upper()
-
-structlog.configure(
-    processors=[
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer()
-    ]
+# Enhanced database setup
+engine = create_engine(
+    config.database.url,
+    echo=config.database.echo,
+    pool_size=config.database.pool_size,
+    pool_timeout=config.database.pool_timeout,
+    pool_pre_ping=True
 )
-logger = structlog.get_logger()
+Base.metadata.create_all(bind=engine)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
-# Airbnb country code mapping (partial, add more as needed)
-AIRBNB_COUNTRY_CODE_MAP = {
-    'Ghana': '233GH',
-    'Egypt': '20EG',
-    'United States': '1US',
-    'Nigeria': '234NG',
-    'United Kingdom': '44GB',
-    # Add more as needed
-}
-
-BROWSER_HEADERS = {
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language': 'ar,en-US;q=0.9,en;q=0.8',
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-}
-
-USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-]
-
-def random_name():
-    first = ''.join(random.choices(string.ascii_letters, k=6)).capitalize()
-    last = ''.join(random.choices(string.ascii_letters, k=8)).capitalize()
-    return first, last
-
-def random_email():
-    user = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-    domain = random.choice(['gmail.com', 'yahoo.com', 'outlook.com'])
-    return f"{user}@{domain}"
-
-class PlaywrightNotInitialized(Exception):
+# Enhanced exception handling
+class SMSServiceError(Exception):
+    """Base exception for SMS service errors"""
     pass
 
-class ProxyError(Exception): pass
-class CaptchaError(Exception): pass
-class LoginError(Exception): pass
+class ProxyError(SMSServiceError):
+    """Proxy-related errors"""
+    pass
 
-def load_config() -> dict:
-    """Load configuration from config.json or environment variables."""
-    config = {}
-    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-    if os.path.exists(config_path):
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-    # Override with environment variables if present
-    config['SMS_USERNAME'] = os.getenv('SMS_USERNAME', config.get('SMS_USERNAME', ''))
-    config['SMS_PASSWORD'] = os.getenv('SMS_PASSWORD', config.get('SMS_PASSWORD', ''))
-    return config
+class CaptchaError(SMSServiceError):
+    """Captcha-related errors"""
+    pass
 
-async def async_retry(func, retries=3, delay=2, exceptions=(Exception,)):
-    for attempt in range(retries):
+class LoginError(SMSServiceError):
+    """Login-related errors"""
+    pass
+
+class RateLimitError(SMSServiceError):
+    """Rate limit errors"""
+    pass
+
+class VerificationTimeoutError(SMSServiceError):
+    """Verification timeout errors"""
+    pass
+
+# Enhanced user agent and header management
+class UserAgentManager:
+    def __init__(self):
+        self.user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+        ]
+        self.current_index = 0
+    
+    def get_random_agent(self) -> str:
+        return random.choice(self.user_agents)
+    
+    def get_next_agent(self) -> str:
+        agent = self.user_agents[self.current_index]
+        self.current_index = (self.current_index + 1) % len(self.user_agents)
+        return agent
+    
+    def get_headers_for_agent(self, user_agent: str) -> Dict[str, str]:
+        base_headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
+        }
+        
+        if 'Chrome' in user_agent:
+            base_headers.update({
+                'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"'
+            })
+        
+        base_headers['User-Agent'] = user_agent
+        return base_headers
+
+# Enhanced proxy management
+class ProxyManager:
+    def __init__(self):
+        self.proxies: List[Dict[str, Any]] = []
+        self.current_index = 0
+        self.health_status: Dict[str, bool] = {}
+        self.response_times: Dict[str, float] = {}
+        self.last_health_check = datetime.utcnow()
+        
+    async def load_proxies_from_db(self):
+        """Load proxies from database"""
+        with SessionLocal() as db:
+            proxy_records = db.query(ProxyServer).filter(ProxyServer.is_active == True).all()
+            self.proxies = [
+                {
+                    'host': p.host,
+                    'port': p.port,
+                    'username': p.username,
+                    'password': p.password,
+                    'success_rate': p.success_rate
+                }
+                for p in proxy_records
+            ]
+    
+    async def test_proxy(self, proxy: Dict[str, Any]) -> Tuple[bool, float]:
+        """Test a single proxy"""
+        proxy_url = f"http://{proxy['host']}:{proxy['port']}"
+        
         try:
-            return await func()
-        except exceptions as e:
-            if attempt < retries - 1:
-                logger.warning(f"Retrying {func.__name__} due to error: {e} (attempt {attempt+1}/{retries})")
-                await asyncio.sleep(delay)
-            else:
-                logger.error(f"Failed after {retries} attempts: {e}")
-                raise
+            connector = aiohttp.TCPConnector()
+            proxy_auth = None
+            
+            if proxy.get('username'):
+                proxy_auth = aiohttp.BasicAuth(proxy['username'], proxy['password'])
+            
+            start_time = time.time()
+            
+            async with aiohttp.ClientSession(connector=connector) as session:
+                async with session.get(
+                    config.proxy.test_url,
+                    proxy=proxy_url,
+                    proxy_auth=proxy_auth,
+                    timeout=aiohttp.ClientTimeout(total=config.proxy.test_timeout)
+                ) as response:
+                    if response.status == 200:
+                        response_time = time.time() - start_time
+                        return True, response_time
+                    
+        except Exception as e:
+            logger.debug(f"Proxy test failed for {proxy_url}: {e}")
+            
+        return False, float('inf')
+    
+    async def health_check(self):
+        """Perform health check on all proxies"""
+        if not self.proxies:
+            return
+            
+        now = datetime.utcnow()
+        if (now - self.last_health_check).seconds < config.proxy.health_check_interval:
+            return
+            
+        logger.info("Performing proxy health check...")
+        
+        with Progress() as progress:
+            task = progress.add_task("Testing proxies...", total=len(self.proxies))
+            
+            for proxy in self.proxies:
+                proxy_key = f"{proxy['host']}:{proxy['port']}"
+                is_healthy, response_time = await self.test_proxy(proxy)
+                
+                self.health_status[proxy_key] = is_healthy
+                self.response_times[proxy_key] = response_time
+                
+                # Update database
+                with SessionLocal() as db:
+                    db_proxy = db.query(ProxyServer).filter(
+                        ProxyServer.host == proxy['host'],
+                        ProxyServer.port == proxy['port']
+                    ).first()
+                    
+                    if db_proxy:
+                        db_proxy.is_active = is_healthy
+                        db_proxy.response_time = response_time
+                        db_proxy.last_tested = now
+                        db.commit()
+                
+                progress.advance(task)
+        
+        self.last_health_check = now
+        healthy_count = sum(1 for status in self.health_status.values() if status)
+        logger.info(f"Proxy health check complete: {healthy_count}/{len(self.proxies)} healthy")
+    
+    def get_best_proxy(self) -> Optional[Dict[str, Any]]:
+        """Get the best performing healthy proxy"""
+        if not self.proxies:
+            return None
+            
+        healthy_proxies = []
+        for proxy in self.proxies:
+            proxy_key = f"{proxy['host']}:{proxy['port']}"
+            if self.health_status.get(proxy_key, True):  # Assume healthy if not tested
+                proxy_with_metrics = proxy.copy()
+                proxy_with_metrics['response_time'] = self.response_times.get(proxy_key, 1.0)
+                healthy_proxies.append(proxy_with_metrics)
+        
+        if not healthy_proxies:
+            return None
+            
+        # Sort by success rate and response time
+        healthy_proxies.sort(key=lambda p: (-p['success_rate'], p['response_time']))
+        return healthy_proxies[0]
 
-class SMSServiceHandler:
-    sms_context: Optional[BrowserContext]
-    sms_page: Optional[Page]
-    def __init__(self, sms_username: str, sms_password: str):
-        self.sms_username = sms_username
-        self.sms_password = sms_password
+# Enhanced SMS service handler
+class EnhancedSMSServiceHandler:
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+        self.playwright = None
         self.browser = None
         self.sms_context = None
         self.sms_page = None
+        self.session_id = str(uuid.uuid4())
+        self.session_start = datetime.utcnow()
+        self.user_agent_manager = UserAgentManager()
+        self.proxy_manager = ProxyManager()
+        self.message_cache: Dict[str, List[Dict]] = {}
+        self.last_refresh = datetime.utcnow()
         
-    async def initialize(self):
-        """Initialize Playwright browser and contexts"""
-        self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch(
-            headless=False,  # Set to True for production
-            slow_mo=1000    # Slow down operations
-        )
-        # Choose a random user agent for this session
-        user_agent = random.choice(USER_AGENTS)
-        # Merge headers, override User-Agent
-        headers = BROWSER_HEADERS.copy()
-        headers['User-Agent'] = user_agent
-        # Create context for SMS service with stealth headers
-        self.sms_context = await self.browser.new_context(
-            user_agent=user_agent,
-            extra_http_headers=headers,
-            locale='en-US'
-        )
-        logger.info(f"Browser initialized with User-Agent: {user_agent}")
+    async def __aenter__(self):
+        await self.initialize()
+        return self
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.cleanup()
     
-    def find_csv_file(self) -> str:
-        """Find CSV file in current directory"""
-        csv_patterns = [
-            "*SMS*.csv",
-            "*Number*.csv",
-            "*Phone*.csv",
-            "*.csv"
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((PlaywrightTimeout, ProxyError, CaptchaError))
+    )
+    async def initialize(self):
+        """Initialize with enhanced error handling and proxy support"""
+        try:
+            logger.info("Initializing SMS service handler", session_id=self.session_id)
+            
+            self.playwright = await async_playwright().start()
+            
+            # Load and test proxies if enabled
+            if config.proxy.enabled:
+                await self.proxy_manager.load_proxies_from_db()
+                await self.proxy_manager.health_check()
+            
+            # Browser launch options
+            browser_options = {
+                "headless": config.browser.headless,
+                "slow_mo": config.browser.slow_mo,
+                "args": [
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-features=VizDisplayCompositor",
+                    "--disable-extensions",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage"
+                ]
+            }
+            
+            # Add proxy if enabled and available
+            if config.proxy.enabled:
+                best_proxy = self.proxy_manager.get_best_proxy()
+                if best_proxy:
+                    proxy_config = {
+                        "server": f"http://{best_proxy['host']}:{best_proxy['port']}"
+                    }
+                    if best_proxy.get('username'):
+                        proxy_config.update({
+                            "username": best_proxy['username'],
+                            "password": best_proxy['password']
+                        })
+                    browser_options["proxy"] = proxy_config
+                    logger.info("Using proxy", proxy=f"{best_proxy['host']}:{best_proxy['port']}")
+            
+            self.browser = await self.playwright.chromium.launch(**browser_options)
+            
+            # Create context with enhanced stealth
+            user_agent = self.user_agent_manager.get_random_agent()
+            headers = self.user_agent_manager.get_headers_for_agent(user_agent)
+            
+            context_options = {
+                "viewport": {
+                    "width": config.browser.viewport_width,
+                    "height": config.browser.viewport_height
+                },
+                "user_agent": user_agent,
+                "extra_http_headers": headers,
+                "locale": "en-US",
+                "timezone_id": "America/New_York",
+                "permissions": ["geolocation"],
+                "geolocation": {"latitude": 40.7128, "longitude": -74.0060}
+            }
+            
+            self.sms_context = await self.browser.new_context(**context_options)
+            
+            # Apply stealth scripts
+            if config.browser.stealth_mode:
+                await self._apply_enhanced_stealth()
+            
+            logger.info("Browser initialized successfully")
+            
+        except Exception as e:
+            logger.error("Failed to initialize browser", error=str(e))
+            await self.cleanup()
+            raise SMSServiceError(f"Browser initialization failed: {str(e)}")
+    
+    async def _apply_enhanced_stealth(self):
+        """Apply comprehensive stealth measures"""
+        stealth_script = """
+        // Remove webdriver property
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined
+        });
+        
+        // Mock languages
+        Object.defineProperty(navigator, 'languages', {
+            get: () => ['en-US', 'en']
+        });
+        
+        // Mock plugins
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [1, 2, 3, 4, 5]
+        });
+        
+        // Mock chrome object
+        window.chrome = {
+            runtime: {},
+            loadTimes: function() {},
+            csi: function() {},
+            app: {}
+        };
+        
+        // Mock permissions
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications' ?
+                Promise.resolve({ state: Notification.permission }) :
+                originalQuery(parameters)
+        );
+        
+        // Override the `plugins` property to use a custom getter.
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [1, 2, 3, 4, 5],
+        });
+        
+        // Pass the Webdriver test
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined,
+        });
+        """
+        
+        await self.sms_context.add_init_script(stealth_script)
+    
+    def _extract_captcha_numbers(self, captcha_text: str) -> Optional[str]:
+        """Enhanced captcha solving with multiple patterns"""
+        if not captcha_text:
+            return None
+            
+        # Clean the text
+        captcha_text = captcha_text.strip().lower()
+        
+        # Multiple patterns for different captcha formats
+        patterns = [
+            r'what is (\d+) \+ (\d+)',
+            r'(\d+) \+ (\d+) = \?',
+            r'(\d+) plus (\d+)',
+            r'add (\d+) and (\d+)',
+            r'(\d+)\s*\+\s*(\d+)',
         ]
         
-        for pattern in csv_patterns:
-            files = glob.glob(pattern)
-            if files:
-                csv_file = files[0]
-                logger.info(f"Found CSV file: {csv_file}")
-                return csv_file
-        
-        all_files = os.listdir('.')
-        logger.error(f"No CSV file found. Files in directory: {all_files}")
-        raise FileNotFoundError("No CSV file found in current directory")
-    
-    def read_csv(self, file_path: Optional[str] = None) -> pd.DataFrame:
-        """Read CSV file and return DataFrame"""
-        try:
-            if file_path is None:
-                file_path = self.find_csv_file()
-            df = pd.read_csv(str(file_path))
-            logger.info(f"Successfully read {len(df)} phone numbers from {file_path}")
-            logger.info(f"CSV columns: {list(df.columns)}")
-            return df
-        except Exception as e:
-            logger.error(f"Error reading CSV file: {e}")
-            raise
-    
-    def solve_math_captcha(self, captcha_text: str) -> str:
-        """Solve simple math captcha intelligently"""
-        try:
-            logger.info(f"Captcha text: {captcha_text}")
-            
-            patterns = [
-                r'What is (\d+)\s*([+\-*/×÷])\s*(\d+)\s*=\s*\?',
-                r'(\d+)\s*([+\-*/×÷])\s*(\d+)\s*=\s*\?',
-                r'(\d+)\s*([+\-*/×÷])\s*(\d+)',
-                r'What is (\d+)\s*([+\-*/×÷])\s*(\d+)',
-            ]
-            
-            for pattern in patterns:
-                match = re.search(pattern, captcha_text, re.IGNORECASE)
-                if match:
-                    num1, operator, num2 = match.groups()
-                    num1, num2 = int(num1), int(num2)
-                    
-                    if operator in ['+']:
-                        result = num1 + num2
-                    elif operator in ['-']:
-                        result = num1 - num2
-                    elif operator in ['*', '×']:
-                        result = num1 * num2
-                    elif operator in ['/', '÷']:
-                        result = num1 // num2 if num2 != 0 else 0
-                    else:
-                        result = num1 + num2
-                    
-                    logger.info(f"Solved captcha: {num1} {operator} {num2} = {result}")
+        for pattern in patterns:
+            match = re.search(pattern, captcha_text)
+            if match:
+                try:
+                    num1, num2 = map(int, match.groups())
+                    result = num1 + num2
+                    logger.info(f"Solved captcha: {num1} + {num2} = {result}")
                     return str(result)
-            
-            numbers = re.findall(r'\d+', captcha_text)
-            if len(numbers) >= 2:
-                num1, num2 = int(numbers[0]), int(numbers[1])
-                result = num1 + num2
-                logger.info(f"Fallback solution: {num1} + {num2} = {result}")
+                except ValueError:
+                    continue
+        
+        # Fallback to simple number extraction
+        numbers = re.findall(r'\d+', captcha_text)
+        if len(numbers) >= 2:
+            try:
+                result = sum(int(num) for num in numbers[:2])
+                logger.info(f"Fallback captcha solution: {result}")
                 return str(result)
-            
-            logger.warning("Could not parse captcha, returning default")
-            return "10"
-            
-        except Exception as e:
-            logger.error(f"Error solving captcha: {e}")
-            return "10"
+            except ValueError:
+                pass
+        
+        logger.warning("Could not solve captcha", text=captcha_text)
+        return "10"  # Conservative fallback
     
     @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def login_to_sms_service(self) -> bool:
-        """Login to SMS service"""
-        async def _login():
-            try:
-                if self.sms_context is None:
-                    raise PlaywrightNotInitialized("Playwright context is not initialized.")
-                self.sms_page = await self.sms_context.new_page()
-                if not self.sms_page:
-                    logger.error("Failed to create new page for SMS service.")
-                    return False
-                await self.sms_page.goto('http://91.232.105.47/ints/login')
-                await self.sms_page.wait_for_load_state('networkidle')
-                await self.sms_page.wait_for_selector('input[name="username"]', timeout=15000)
-                await self.sms_page.fill('input[name="username"]', self.sms_username)
-                await self.sms_page.fill('input[name="password"]', self.sms_password)
-                captcha_solved = False
-                try:
-                    captcha_div = await self.sms_page.query_selector('div.wrap-input100')
-                    captcha_text = await captcha_div.text_content() if captcha_div else None
-                    if captcha_text and (('What is' in captcha_text) or ('=' in captcha_text)):
-                        captcha_answer = self.solve_math_captcha(captcha_text or "")
-                        await self.sms_page.fill('input[name="capt"]', captcha_answer)
-                        logger.info(f"Filled captcha answer: {captcha_answer}")
-                        captcha_solved = True
-                except Exception as e:
-                    logger.warning(f"Captcha method 1 failed: {e}")
-                if not captcha_solved:
-                    try:
-                        page_text = await self.sms_page.text_content('body') if self.sms_page else None
-                        if page_text and (('What is' in page_text) or ('=' in page_text)):
-                            captcha_answer = self.solve_math_captcha(page_text or "")
-                            captcha_input = await self.sms_page.query_selector('input[name="capt"]') if self.sms_page else None
-                            if captcha_input:
-                                await captcha_input.fill(captcha_answer)
-                                logger.info(f"Filled captcha answer (method 2): {captcha_answer}")
-                                captcha_solved = True
-                    except Exception as e:
-                        logger.warning(f"Captcha method 2 failed: {e}")
-                if not captcha_solved:
-                    logger.warning("Could not solve captcha automatically, using fallback")
-                    try:
-                        captcha_input = await self.sms_page.query_selector('input[name="capt"]') if self.sms_page else None
-                        if captcha_input:
-                            await captcha_input.fill('9')
-                            logger.info("Used fallback captcha answer: 9")
-                    except Exception as e:
-                        logger.warning(f"Fallback captcha failed: {e}")
-                login_button = await self.sms_page.query_selector('button[type="submit"]') if self.sms_page else None
-                if not login_button and self.sms_page:
-                    login_button = await self.sms_page.query_selector('input[type="submit"]')
-                if not login_button and self.sms_page:
-                    login_button = await self.sms_page.query_selector('button')
-                if login_button:
-                    await login_button.click()
-                    await self.sms_page.wait_for_load_state('networkidle')
-                    current_url = self.sms_page.url if self.sms_page else ''
-                    if 'login' not in current_url.lower() or 'dashboard' in current_url.lower():
-                        logger.info("Login successful, navigating to SMS data page for extraction")
-                        # After login, go to the SMSCDRStats page to extract messages
-                        await self.sms_page.goto('http://91.232.105.47/ints/client/SMSCDRStats')
-                        await self.sms_page.wait_for_load_state('networkidle')
-                        logger.info("Successfully navigated to SMSCDRStats for SMS extraction")
-                        return True
-                    else:
-                        logger.error("Login may have failed - still on login page")
-                        return False
-                else:
-                    logger.error("Could not find login button")
-                    return False
-            except Exception as e:
-                logger.error(f"Failed to login to SMS service: {e}")
-                return False
+        """Enhanced login with better error handling"""
         try:
-            result = await async_retry(_login, retries=3, delay=3)
-            return bool(result)
-        except Exception:
-            return False
+            if not self.sms_context:
+                raise SMSServiceError("SMS context not initialized")
+            
+            logger.info("Attempting login to SMS service")
+            self.sms_page = await self.sms_context.new_page()
+            
+            # Navigate to login page
+            await self.sms_page.goto(
+                f"{config.sms_service.base_url}/login",
+                timeout=config.sms_service.timeout * 1000,
+                wait_until="networkidle"
+            )
+            
+            # Wait for login form
+            await self.sms_page.wait_for_selector('input[name="username"]', timeout=15000)
+            
+            # Fill credentials
+            await self.sms_page.fill('input[name="username"]', self.username)
+            await self.sms_page.fill('input[name="password"]', self.password)
+            
+            # Handle captcha if present
+            await self._handle_enhanced_captcha()
+            
+            # Submit form
+            await self._submit_login_form()
+            
+            # Verify login success
+            if await self._verify_login_success():
+                # Navigate to SMS data page
+                await self.sms_page.goto(
+                    f"{config.sms_service.base_url}/client/SMSCDRStats",
+                    timeout=config.sms_service.timeout * 1000,
+                    wait_until="networkidle"
+                )
+                logger.info("Successfully logged in and navigated to SMS data page")
+                return True
+            else:
+                raise LoginError("Login verification failed")
+                
+        except Exception as e:
+            logger.error("Login failed", error=str(e))
+            if isinstance(e, (PlaywrightTimeout, LoginError)):
+                raise
+            raise SMSServiceError(f"Login failed: {str(e)}")
     
-    async def extract_sms_data_from_table(self) -> List[Dict]:
+    async def _handle_enhanced_captcha(self):
+        """Enhanced captcha handling with multiple strategies"""
+        captcha_selectors = [
+            'div.wrap-input100',
+            '.captcha-container', 
+            '#captcha-text',
+            'div:has-text("What is")',
+            'label:has-text("=")'
+        ]
+        
+        captcha_text = None
+        
+        # Try to find captcha element
+        for selector in captcha_selectors:
+            try:
+                element = await self.sms_page.wait_for_selector(selector, timeout=3000)
+                if element:
+                    text = await element.text_content()
+                    if text and ('what is' in text.lower() or '+' in text or '=' in text):
+                        captcha_text = text
+                        break
+            except:
+                continue
+        
+        # Fallback to page content search
+        if not captcha_text:
+            page_content = await self.sms_page.content()
+            if 'what is' in page_content.lower() or 'captcha' in page_content.lower():
+                # Extract relevant text
+                soup_match = re.search(r'what is \d+ \+ \d+', page_content, re.IGNORECASE)
+                if soup_match:
+                    captcha_text = soup_match.group()
+        
+        # Solve and fill captcha
+        if captcha_text:
+            answer = self._extract_captcha_numbers(captcha_text)
+            if answer:
+                captcha_input = await self.sms_page.query_selector('input[name="capt"]')
+                if captcha_input:
+                    await captcha_input.fill(answer)
+                    logger.info("Captcha solved and filled", answer=answer)
+    
+    async def _submit_login_form(self):
+        """Submit login form with multiple button strategies"""
+        submit_selectors = [
+            'button[type="submit"]',
+            'input[type="submit"]', 
+            'button:has-text("Login")',
+            'button:has-text("Sign In")',
+            '.login-button',
+            '#login-submit'
+        ]
+        
+        for selector in submit_selectors:
+            try:
+                button = await self.sms_page.wait_for_selector(selector, timeout=3000)
+                if button:
+                    await button.click()
+                    await self.sms_page.wait_for_load_state('networkidle')
+                    return
+            except:
+                continue
+                
+        raise LoginError("No submit button found")
+    
+    async def _verify_login_success(self) -> bool:
+        """Verify login was successful"""
+        current_url = self.sms_page.url
+        
+        # Check URL for success indicators
+        if 'login' not in current_url.lower() or 'dashboard' in current_url.lower():
+            return True
+        
+        # Check for error messages
+        error_selectors = [
+            '.error-message',
+            '.alert-danger', 
+            '#error-container',
+            'div:has-text("Invalid")',
+            'div:has-text("Error")'
+        ]
+        
+        for selector in error_selectors:
+            try:
+                error_element = await self.sms_page.query_selector(selector)
+                if error_element:
+                    error_text = await error_element.text_content()
+                    if error_text and any(word in error_text.lower() for word in ['invalid', 'error', 'failed']):
+                        logger.error("Login error detected", error=error_text)
+                        return False
+            except:
+                continue
+        
+        # Check for successful login indicators
+        success_indicators = ['dashboard', 'welcome', 'sms', 'messages']
+        page_content = await self.sms_page.content()
+        
+        return any(indicator in page_content.lower() for indicator in success_indicators)
+    
+    async def extract_sms_data_with_caching(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """Extract SMS data with intelligent caching"""
+        now = datetime.utcnow()
+        cache_key = f"{self.session_id}_sms_data"
+        
+        # Check cache validity
+        if not force_refresh and (now - self.last_refresh).seconds < 30:
+            if cache_key in self.message_cache:
+                logger.debug("Using cached SMS data")
+                return self.message_cache[cache_key]
+        
         try:
-            if self.sms_page is None:
-                raise PlaywrightNotInitialized("SMS page is not initialized.")
-            await self.sms_page.wait_for_selector('#dt', timeout=10000)  # type: ignore[reportGeneralTypeIssues]
-            rows = await self.sms_page.query_selector_all('#dt tbody tr')  # type: ignore[reportGeneralTypeIssues]
+            if not self.sms_page:
+                raise SMSServiceError("SMS page not initialized")
+            
+            # Wait for table with timeout
+            await self.sms_page.wait_for_selector('#dt tbody', timeout=15000)
+            
+            # Extract table rows
+            rows = await self.sms_page.query_selector_all('#dt tbody tr')
             sms_data = []
+            
             for row in rows:
                 try:
+                    # Skip hidden rows
                     style = await row.get_attribute('style')
                     if style and 'display: none' in style:
-                        logger.debug("Skipping hidden row")
                         continue
+                    
+                    # Extract cell data
                     cells = await row.query_selector_all('td')
-                    if len(cells) >= 7:
-                        date_cell = await cells[0].text_content() or ''
-                        range_cell = await cells[1].text_content() or ''
-                        number_cell = await cells[2].text_content() or ''
-                        cli_cell = await cells[3].text_content() or ''
-                        sms_cell = await cells[4].text_content() or ''
-                        currency_cell = await cells[5].text_content() or ''
-                        payout_cell = await cells[6].text_content() or ''
-                        if date_cell.strip() == "0,0,0,2" or "0,0,0," in date_cell.strip():
-                            logger.debug("Skipping total row")
-                            continue
-                        if not date_cell.strip() or not number_cell.strip():
-                            logger.debug("Skipping empty row")
-                            continue
-                        sms_record = {
-                            'date': date_cell.strip(),
-                            'range': range_cell.strip(),
-                            'number': number_cell.strip(),
-                            'cli': cli_cell.strip(),
-                            'sms': sms_cell.strip(),
-                            'currency': currency_cell.strip(),
-                            'payout': payout_cell.strip()
-                        }
-                        sms_data.append(sms_record)
-                except Exception as e:
-                    logger.warning(f"Error extracting row data: {e}")
-                    continue
-            logger.info(f"Extracted {len(sms_data)} SMS records from table")
-            return sms_data
-        except PlaywrightNotInitialized as e:
-            logger.error(str(e))
-            return []
-        except Exception as e:
-            logger.error(f"Error extracting SMS data from table: {e}")
-            return []
-
-    async def display_existing_messages(self):
-        try:
-            logger.info("=" * 60)
-            logger.info("CHECKING EXISTING MESSAGES IN SMS SERVICE")
-            logger.info("=" * 60)
-            if self.sms_page is None:
-                raise PlaywrightNotInitialized("SMS page is not initialized.")
-            await self.sms_page.wait_for_timeout(3000)  # type: ignore[reportGeneralTypeIssues]
-            table_exists = await self.sms_page.query_selector('#dt')  # type: ignore[reportGeneralTypeIssues]
-            if not table_exists:
-                logger.warning("DataTable not found on page")
-                await self.sms_page.screenshot(path='sms_page_after_login.png')  # type: ignore[reportGeneralTypeIssues]
-                logger.info("Screenshot saved as 'sms_page_after_login.png'")
-                return
-            try:
-                table_info = await self.sms_page.query_selector('#dt_info')  # type: ignore[reportGeneralTypeIssues]
-                if table_info:
-                    info_text = await table_info.text_content()
-                    logger.info(f"Table info: {info_text}")
-            except:
-                pass
-            existing_messages = await self.extract_sms_data_from_table()
-            # Save messages to the database
-            with SessionLocal() as db:
-                for message in existing_messages:
-                    # Try to extract code if CLI is AIRBNB
-                    code = None
-                    if message['cli'].upper() == 'AIRBNB':
-                        sms_text = message['sms']
-                        code_patterns = [
-                            r'verification code is (\d{6})',
-                            r'code is (\d{6})',
-                            r'code: (\d{6})',
-                            r'(\d{6})'
-                        ]
-                        for pattern in code_patterns:
-                            matches = re.findall(pattern, sms_text)
-                            if matches:
-                                code = matches[0]
-                                break
-                    # Check if message already exists
-                    exists = db.query(SMSMessage).filter_by(
-                        number=message['number'],
-                        cli=message['cli'],
-                        sms=message['sms'],
-                        received_at=message['date']
-                    ).first()
-                    if not exists:
-                        db.add(SMSMessage(
-                            number=message['number'],
-                            code=code,
-                            cli=message['cli'],
-                            sms=message['sms'],
-                            received_at=message['date']
-                        ))
-                    else:
-                        # Update code if not set
-                        if code and not getattr(exists, "code", None):
-                            exists.code = code
-                db.commit()
-            # --- JSON output removed: DB is now the source of truth ---
-            # if verification_codes:
-            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            #     codes_filename = f'verification_codes_{timestamp}.json'
-            #     with open(codes_filename, 'w', encoding='utf-8') as f:
-            #         json.dump(verification_codes, f, ensure_ascii=False, indent=2)
-            #     logger.info(f"Verification codes saved to {codes_filename}")
-            # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            # filename = f'sms_messages_{timestamp}.json'
-            # with open(filename, 'w', encoding='utf-8') as f:
-            #     json.dump(existing_messages, f, ensure_ascii=False, indent=2)
-            # logger.info(f"All messages saved to {filename}")
-            if existing_messages:
-                logger.info(f"Found {len(existing_messages)} existing messages:")
-                logger.info("-" * 60)
-                for i, message in enumerate(existing_messages, 1):
-                    logger.info(f"Message {i}:")
-                    logger.info(f"  Date: {message['date']}")
-                    logger.info(f"  Range: {message['range']}")
-                    logger.info(f"  Number: {message['number']}")
-                    logger.info(f"  CLI: {message['cli']}")
-                    logger.info(f"  SMS: {message['sms']}")
-                    logger.info(f"  Currency: {message['currency']}")
-                    logger.info(f"  Payout: {message['payout']}")
-                    logger.info("-" * 40)
-                # verification_codes = [] # Removed as per edit hint
-                # for message in existing_messages: # Removed as per edit hint
-                #     if message['cli'].upper() == 'AIRBNB': # Removed as per edit hint
-                #         sms_text = message['sms'] # Removed as per edit hint
-                #         code_patterns = [ # Removed as per edit hint
-                #             r'verification code is (\d{6})', # Removed as per edit hint
-                #             r'code is (\d{6})', # Removed as per edit hint
-                #             r'code: (\d{6})', # Removed as per edit hint
-                #             r'(\d{6})' # Removed as per edit hint
-                #         ] # Removed as per edit hint
-                #         for pattern in code_patterns: # Removed as per edit hint
-                #             matches = re.findall(pattern, sms_text) # Removed as per edit hint
-                #             if matches: # Removed as per edit hint
-                #                 verification_codes.append({ # Removed as per edit hint
-                #                     'number': message['number'], # Removed as per edit hint
-                #                     'code': matches[0], # Removed as per edit hint
-                #                     'date': message['date'], # Removed as per edit hint
-                #                     'full_sms': sms_text # Removed as per edit hint
-                #                 }) # Removed as per edit hint
-                #                 break # Removed as per edit hint
-                # if verification_codes: # Removed as per edit hint
-                #     logger.info("=" * 60) # Removed as per edit hint
-                #     logger.info("EXTRACTED VERIFICATION CODES:") # Removed as per edit hint
-                #     logger.info("=" * 60) # Removed as per edit hint
-                #     for i, code_info in enumerate(verification_codes, 1): # Removed as per edit hint
-                #         logger.info(f"Code {i}:") # Removed as per edit hint
-                #         logger.info(f"  Number: {code_info['number']}") # Removed as per edit hint
-                #         logger.info(f"  Code: {code_info['code']}") # Removed as per edit hint
-                #         logger.info(f"  Date: {code_info['date']}") # Removed as per edit hint
-                #         logger.info("-" * 40) # Removed as per edit hint
-                #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") # Removed as per edit hint
-                #     codes_filename = f'verification_codes_{timestamp}.json' # Removed as per edit hint
-                #     with open(codes_filename, 'w', encoding='utf-8') as f: # Removed as per edit hint
-                #         json.dump(verification_codes, f, ensure_ascii=False, indent=2) # Removed as per edit hint
-                #     logger.info(f"Verification codes saved to {codes_filename}") # Removed as per edit hint
-                # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") # Removed as per edit hint
-                # filename = f'sms_messages_{timestamp}.json' # Removed as per edit hint
-                # with open(filename, 'w', encoding='utf-8') as f: # Removed as per edit hint
-                #     json.dump(existing_messages, f, ensure_ascii=False, indent=2) # Removed as per edit hint
-                # logger.info(f"All messages saved to {filename}") # Removed as per edit hint
-            else:
-                logger.info("No existing messages found in the table")
-            logger.info("=" * 60)
-            logger.info("FINISHED CHECKING EXISTING MESSAGES")
-            logger.info("=" * 60)
-        except PlaywrightNotInitialized as e:
-            logger.error(str(e))
-            return
-        except Exception as e:
-            logger.error(f"Error displaying existing messages: {e}")
-            try:
-                if self.sms_page and hasattr(self.sms_page, 'screenshot'):
-                    await self.sms_page.screenshot(path='error_existing_messages.png')  # type: ignore[reportGeneralTypeIssues]
-                    logger.info("Error screenshot saved as 'error_existing_messages.png'")
-            except:
-                pass
-    
-    async def test_specific_phone_numbers(self, phone_numbers: List[str]):
-        """Test specific phone numbers for verification codes"""
-        try:
-            logger.info("=" * 60)
-            logger.info("TESTING SPECIFIC PHONE NUMBERS")
-            logger.info("=" * 60)
-            
-            for phone_number in phone_numbers:
-                logger.info(f"Testing phone number: {phone_number}")
-                code = await self.get_verification_code_for_number(phone_number, timeout=30)
-                
-                if code:
-                    logger.info(f"✓ Found verification code for {phone_number}: {code}")
-                else:
-                    logger.info(f"✗ No verification code found for {phone_number}")
-                
-                logger.info("-" * 40)
-                
-        except Exception as e:
-            logger.error(f"Error testing specific phone numbers: {e}")
-    
-    async def get_verification_code_for_number(self, phone_number: str, timeout: int = 120) -> Optional[str]:
-        try:
-            if self.sms_page is None:
-                raise PlaywrightNotInitialized("SMS page is not initialized.")
-            start_time = time.time()
-            logger.info(f"Looking for verification code for number: {phone_number}")
-            clean_phone = phone_number.replace('+', '').replace('-', '').replace(' ', '')
-            logger.info(f"Cleaned phone number: {clean_phone}")
-            initial_messages = await self.extract_sms_data_from_table()
-            initial_count = len(initial_messages)
-            logger.info(f"Initial message count: {initial_count}")
-            logger.info("Checking existing messages for verification code...")
-            for message in initial_messages:
-                message_number = message['number'].replace('+', '').replace('-', '').replace(' ', '')
-                if (clean_phone == message_number or 
-                    clean_phone in message_number or 
-                    message_number in clean_phone or
-                    clean_phone.endswith(message_number[-8:]) or 
-                    message_number.endswith(clean_phone[-8:])):
-                    if message['cli'].upper() == 'AIRBNB':
-                        logger.info(f"Found existing Airbnb SMS for {phone_number}")
-                        sms_text = message['sms']
-                        code_patterns = [
-                            r'verification code is (\d{6})',
-                            r'code is (\d{6})',
-                            r'code: (\d{6})',
-                            r'(\d{6})'
-                        ]
-                        for pattern in code_patterns:
-                            matches = re.findall(pattern, sms_text)
-                            if matches:
-                                code = matches[0]
-                                logger.info(f"✓ Found existing verification code: {code}")
-                                return code
-            logger.info("No existing verification code found. Monitoring for new messages...")
-            while time.time() - start_time < timeout:
-                if self.sms_page is None:
-                    raise PlaywrightNotInitialized("SMS page is not initialized.")
-                logger.info("Refreshing SMS page to check for new messages...")
-                await async_retry(lambda: self.sms_page.reload(), retries=3, delay=2)  # type: ignore[reportAttributeAccessIssue]
-                await self.sms_page.wait_for_load_state('networkidle')  # type: ignore[reportGeneralTypeIssues]
-                try:
-                    await self.sms_page.wait_for_selector('#dt tbody', timeout=5000)  # type: ignore[reportGeneralTypeIssues]
-                except:
-                    logger.warning("DataTable not found, waiting...")
-                    await asyncio.sleep(5)
-                    continue
-                sms_data = await self.extract_sms_data_from_table()
-                current_count = len(sms_data)
-                if current_count > initial_count:
-                    logger.info(f"New messages detected! Count: {current_count} (was {initial_count})")
-                    new_messages = sms_data[initial_count:]
-                    for message in new_messages:
-                        message_number = message['number'].replace('+', '').replace('-', '').replace(' ', '')
-                        if (clean_phone == message_number or 
-                            clean_phone in message_number or 
-                            message_number in clean_phone or
-                            clean_phone.endswith(message_number[-8:]) or 
-                            message_number.endswith(clean_phone[-8:])):
-                            if message['cli'].upper() == 'AIRBNB':
-                                logger.info(f"Found new Airbnb SMS for {phone_number}")
-                                sms_text = message['sms']
-                                code_patterns = [
-                                    r'verification code is (\d{6})',
-                                    r'code is (\d{6})',
-                                    r'code: (\d{6})',
-                                    r'(\d{6})'
-                                ]
-                                for pattern in code_patterns:
-                                    matches = re.findall(pattern, sms_text)
-                                    if matches:
-                                        code = matches[0]
-                                        logger.info(f"✓ Found new verification code: {code}")
-                                        return code
-                    initial_count = current_count
-                elapsed_time = int(time.time() - start_time)
-                logger.info(f"No verification code found yet, waiting... ({elapsed_time}s/{timeout}s elapsed)")
-                await asyncio.sleep(10)
-            logger.warning(f"No verification code received for {phone_number} within {timeout} seconds")
-            return None
-        except PlaywrightNotInitialized as e:
-            logger.error(str(e))
-            return None
-        except Exception as e:
-            logger.error(f"Error getting verification code: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
-
-    async def monitor_new_messages(self, duration_minutes: int = 5):
-        try:
-            if self.sms_page is None:
-                raise PlaywrightNotInitialized("SMS page is not initialized.")
-            logger.info("=" * 60)
-            logger.info(f"MONITORING FOR NEW MESSAGES ({duration_minutes} minutes)")
-            logger.info("=" * 60)
-            initial_messages = await self.extract_sms_data_from_table()
-            initial_count = len(initial_messages)
-            logger.info(f"Initial message count: {initial_count}")
-            start_time = time.time()
-            duration_seconds = duration_minutes * 60
-            check_interval = 30
-            with tqdm(total=duration_seconds, desc="Monitoring", unit="sec") as pbar:
-                while time.time() - start_time < duration_seconds:
-                    elapsed = int(time.time() - start_time)
-                    remaining = duration_seconds - elapsed
-                    logger.info(f"Checking for new messages... ({elapsed}s elapsed, {remaining}s remaining)")
-                    if self.sms_page is None:
-                        raise PlaywrightNotInitialized("SMS page is not initialized.")
-                    await async_retry(lambda: self.sms_page.reload(), retries=3, delay=2)  # type: ignore[reportAttributeAccessIssue]
-                    await self.sms_page.wait_for_load_state('networkidle')  # type: ignore[reportGeneralTypeIssues]
-                    try:
-                        await self.sms_page.wait_for_selector('#dt tbody', timeout=10000)  # type: ignore[reportGeneralTypeIssues]
-                    except:
-                        logger.warning("DataTable not found, waiting...")
-                        await asyncio.sleep(check_interval)
-                        pbar.update(check_interval)
+                    if len(cells) < 6:
                         continue
-                    current_messages = await self.extract_sms_data_from_table()
-                    current_count = len(current_messages)
-                    if current_count > initial_count:
-                        new_message_count = current_count - initial_count
-                        logger.info(f"🔔 NEW MESSAGES DETECTED! {new_message_count} new message(s)")
-                        new_messages = current_messages[-new_message_count:]
-                        logger.info("-" * 60)
-                        logger.info("NEW MESSAGES:")
-                        for i, message in enumerate(new_messages, 1):
-                            logger.info(f"New Message {i}:")
-                            logger.info(f"  Date: {message['date']}")
-                            logger.info(f"  Range: {message['range']}")
-                            logger.info(f"  Number: {message['number']}")
-                            logger.info(f"  CLI: {message['cli']}")
-                            logger.info(f"  SMS: {message['sms']}")
-                            logger.info(f"  Currency: {message['currency']}")
-                            logger.info(f"  Payout: {message['payout']}")
-                            logger.info("-" * 40)
-                        # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") # Removed as per edit hint
-                        # filename = f'new_sms_messages_{timestamp}.json' # Removed as per edit hint
-                        # with open(filename, 'w', encoding='utf-8') as f: # Removed as per edit hint
-                        #     json.dump(new_messages, f, ensure_ascii=False, indent=2) # Removed as per edit hint
-                        # logger.info(f"New messages saved to {filename}") # Removed as per edit hint
-                        initial_count = current_count
-                    else:
-                        logger.info(f"No new messages. Current count: {current_count}")
-                    await asyncio.sleep(check_interval)
-                    pbar.update(check_interval)
-                pbar.n = duration_seconds
-                pbar.refresh()
-            logger.info("=" * 60)
-            logger.info("FINISHED MONITORING FOR NEW MESSAGES")
-            logger.info("=" * 60)
-        except PlaywrightNotInitialized as e:
-            logger.error(str(e))
-            return
+                    
+                    # Extract cell contents with validation
+                    cell_contents = []
+                    for cell in cells:
+                        content = await cell.text_content()
+                        cell_contents.append(content.strip() if content else '')
+                    
+                    # Skip invalid rows
+                    if not cell_contents[0] or not cell_contents[2]:  # date and number required
+                        continue
+                    
+                    # Skip total rows
+                    if "0,0,0," in cell_contents[0]:
+                        continue
+                    
+                    # Structure the data
+                    message_data = {
+                        'date': cell_contents[0],
+                        'range': cell_contents[1] if len(cell_contents) > 1 else '',
+                        'number': cell_contents[2],
+                        'cli': cell_contents[3] if len(cell_contents) > 3 else '',
+                        'sms': cell_contents[4] if len(cell_contents) > 4 else '',
+                        'currency': cell_contents[5] if len(cell_contents) > 5 else '',
+                        'payout': cell_contents[6] if len(cell_contents) > 6 else ''
+                    }
+                    
+                    sms_data.append(message_data)
+                    
+                except Exception as e:
+                    logger.debug(f"Error extracting row data: {e}")
+                    continue
+            
+            # Update cache
+            self.message_cache[cache_key] = sms_data
+            self.last_refresh = now
+            
+            logger.info(f"Extracted {len(sms_data)} SMS messages")
+            return sms_data
+            
         except Exception as e:
-            logger.error(f"Error monitoring new messages: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error("Failed to extract SMS data", error=str(e))
+            raise SMSServiceError(f"SMS data extraction failed: {str(e)}")
     
-    async def analyze_phone_numbers(self, df: pd.DataFrame):
-        """Analyze phone numbers from CSV against received SMS messages"""
+    async def get_verification_code_intelligent(
+        self, 
+        phone_number: str, 
+        service_type: ServiceType,
+        timeout: int = None
+    ) -> Optional[VerificationResult]:
+        """Intelligently get verification code with enhanced pattern matching"""
+        
+        if timeout is None:
+            timeout = config.services.verification_timeout
+        
+        clean_phone = self._normalize_phone_number(phone_number)
+        start_time = time.time()
+        
+        logger.info(f"Looking for {service_type.value} verification code", 
+                   phone_number=phone_number, timeout=timeout)
+        
+        # Check existing messages first
+        existing_messages = await self.extract_sms_data_with_caching()
+        
+        # Look for existing verification code
+        for message in existing_messages:
+            if self._phone_numbers_match(clean_phone, message['number']):
+                if self._is_service_message(message['cli'], service_type):
+                    code = self._extract_verification_code_enhanced(message['sms'], service_type)
+                    if code:
+                        logger.info(f"Found existing {service_type.value} code", 
+                                  phone_number=phone_number, code=code)
+                        return VerificationResult(
+                            phone_number=phone_number,
+                            service=service_type,
+                            success=True,
+                            code=code
+                        )
+        
+        # Monitor for new messages
+        check_interval = 10
+        max_iterations = timeout // check_interval
+        
+        for iteration in range(max_iterations):
+            await asyncio.sleep(check_interval)
+            
+            # Refresh and check for new messages
+            current_messages = await self.extract_sms_data_with_caching(force_refresh=True)
+            
+            # Check new messages
+            for message in current_messages[len(existing_messages):]:
+                if self._phone_numbers_match(clean_phone, message['number']):
+                    if self._is_service_message(message['cli'], service_type):
+                        code = self._extract_verification_code_enhanced(message['sms'], service_type)
+                        if code:
+                            # Store in database
+                            await self._store_verification_result(
+                                phone_number, service_type, code, message
+                            )
+                            
+                            logger.info(f"Found new {service_type.value} code", 
+                                      phone_number=phone_number, code=code)
+                            return VerificationResult(
+                                phone_number=phone_number,
+                                service=service_type,
+                                success=True,
+                                code=code
+                            )
+            
+            # Update existing messages for next iteration
+            existing_messages = current_messages
+            
+            # Log progress
+            remaining_time = timeout - (time.time() - start_time)
+            logger.debug(f"Still waiting for code, {remaining_time:.0f}s remaining")
+        
+        # Timeout reached
+        logger.warning(f"No {service_type.value} verification code found", 
+                      phone_number=phone_number, timeout=timeout)
+        
+        return VerificationResult(
+            phone_number=phone_number,
+            service=service_type,
+            success=False,
+            error="Verification timeout"
+        )
+    
+    def _normalize_phone_number(self, phone_number: str) -> str:
+        """Normalize phone number for comparison"""
+        return re.sub(r'[^\d]', '', phone_number)
+    
+    def _phone_numbers_match(self, phone1: str, phone2: str) -> bool:
+        """Enhanced phone number matching"""
+        clean1 = self._normalize_phone_number(phone1)
+        clean2 = self._normalize_phone_number(phone2)
+        
+        # Exact match
+        if clean1 == clean2:
+            return True
+        
+        # One contains the other
+        if clean1 in clean2 or clean2 in clean1:
+            return True
+        
+        # Last 8 digits match (common for international numbers)
+        if len(clean1) >= 8 and len(clean2) >= 8:
+            if clean1[-8:] == clean2[-8:]:
+                return True
+        
+        # Last 10 digits match
+        if len(clean1) >= 10 and len(clean2) >= 10:
+            if clean1[-10:] == clean2[-10:]:
+                return True
+        
+        return False
+    
+    def _is_service_message(self, cli: str, service_type: ServiceType) -> bool:
+        """Check if message is from the expected service"""
+        if not cli:
+            return False
+        
+        cli_lower = cli.lower()
+        service_identifiers = {
+            ServiceType.UBER: ['uber'],
+            ServiceType.AIRBNB: ['airbnb'],
+            ServiceType.LYFT: ['lyft'],
+            ServiceType.DOORDASH: ['doordash', 'door dash']
+        }
+        
+        identifiers = service_identifiers.get(service_type, [])
+        return any(identifier in cli_lower for identifier in identifiers)
+    
+    def _extract_verification_code_enhanced(self, sms_text: str, service_type: ServiceType) -> Optional[str]:
+        """Enhanced verification code extraction with service-specific patterns"""
+        if not sms_text:
+            return None
+        
+        # Service-specific patterns
+        service_patterns = {
+            ServiceType.UBER: [
+                r'Your Uber code is (\d{4,6})',
+                r'Your verification code is (\d{4,6})',
+                r'Uber.*?(\d{4,6})',
+            ],
+            ServiceType.AIRBNB: [
+                r'Your Airbnb verification code is (\d{4,6})',
+                r'verification code is (\d{4,6})',
+                r'Airbnb.*?(\d{4,6})',
+            ],
+            ServiceType.LYFT: [
+                r'Your Lyft code is (\d{4,6})',
+                r'Lyft.*?(\d{4,6})',
+            ],
+            ServiceType.DOORDASH: [
+                r'Your DoorDash verification code is (\d{4,6})',
+                r'DoorDash.*?(\d{4,6})',
+            ]
+        }
+        
+        # Try service-specific patterns first
+        patterns = service_patterns.get(service_type, [])
+        
+        # Add generic patterns
+        patterns.extend([
+            r'verification code is (\d{4,6})',
+            r'code is (\d{4,6})',
+            r'code: (\d{4,6})',
+            r'your code is (\d{4,6})',
+            r'(\d{4,6}) is your',
+            r'(\d{6})',  # Fallback 6-digit pattern
+            r'(\d{4})'   # Fallback 4-digit pattern
+        ])
+        
+        for pattern in patterns:
+            match = re.search(pattern, sms_text, re.IGNORECASE)
+            if match:
+                code = match.group(1)
+                # Validate code length
+                if 4 <= len(code) <= 6:
+                    return code
+        
+        return None
+    
+    async def _store_verification_result(
+        self, 
+        phone_number: str, 
+        service_type: ServiceType, 
+        code: str, 
+        message: Dict[str, Any]
+    ):
+        """Store verification result in database"""
         try:
-            logger.info("=" * 60)
-            logger.info("ANALYZING PHONE NUMBERS FROM CSV")
-            logger.info("=" * 60)
-            current_messages = await self.extract_sms_data_from_table()
-            logger.info(f"CSV contains {len(df)} phone numbers")
-            logger.info(f"SMS service has {len(current_messages)} messages")
-            phone_to_messages = {}
-            for index, row in tqdm(list(enumerate(df.itertuples(index=False))), desc="Analyzing numbers", unit="number"):
-                phone_number = str(getattr(row, 'Number')).strip()
-                clean_phone = phone_number.replace('+', '').replace('-', '').replace(' ', '')
-                logger.info(f"Analyzing phone number {index + 1}: {phone_number}")
-                matching_messages = []
-                for message in current_messages:
-                    message_number = message['number'].replace('+', '').replace('-', '').replace(' ', '')
-                    if (clean_phone == message_number or 
-                        clean_phone in message_number or 
-                        message_number in clean_phone or
-                        clean_phone.endswith(message_number[-8:]) or 
-                        message_number.endswith(clean_phone[-8:])):
-                        matching_messages.append(message)
-                phone_to_messages[phone_number] = matching_messages
-                if matching_messages:
-                    logger.info(f"  ✓ Found {len(matching_messages)} message(s) for {phone_number}")
-                    for msg in matching_messages:
-                        logger.info(f"    - CLI: {msg['cli']}, SMS: {msg['sms'][:50]}...")
-                else:
-                    logger.info(f"  ✗ No messages found for {phone_number}")
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            analysis_filename = f'phone_analysis_{timestamp}.json'
-            analysis_data = {
-                'timestamp': timestamp,
-                'total_phone_numbers': len(df),
-                'total_messages': len(current_messages),
-                'phone_to_messages': phone_to_messages
-            }
-            with open(analysis_filename, 'w', encoding='utf-8') as f:
-                json.dump(analysis_data, f, ensure_ascii=False, indent=2)
-            logger.info(f"Analysis results saved to {analysis_filename}")
-            numbers_with_messages = sum(1 for messages in phone_to_messages.values() if messages)
-            numbers_without_messages = len(df) - numbers_with_messages
-            logger.info(f"Summary:")
-            logger.info(f"  - Phone numbers with messages: {numbers_with_messages}")
-            logger.info(f"  - Phone numbers without messages: {numbers_without_messages}")
-            logger.info("=" * 60)
-            logger.info("FINISHED ANALYZING PHONE NUMBERS")
-            logger.info("=" * 60)
+            with SessionLocal() as db:
+                # Parse timestamp
+                try:
+                    received_at = datetime.strptime(message['date'], '%Y-%m-%d %H:%M:%S')
+                except:
+                    received_at = datetime.utcnow()
+                
+                # Create SMS message record
+                sms_message = SMSMessage(
+                    phone_number=phone_number,
+                    service_type=service_type.value,
+                    verification_code=code,
+                    cli=message['cli'],
+                    sms_content=message['sms'],
+                    status=MessageStatus.RECEIVED,
+                    received_at=received_at,
+                    processed_at=datetime.utcnow(),
+                    session_id=self.session_id
+                )
+                
+                db.add(sms_message)
+                
+                # Update phone number record
+                phone_record = db.query(PhoneNumber).filter(
+                    PhoneNumber.number == phone_number
+                ).first()
+                
+                if phone_record:
+                    phone_record.success_count += 1
+                    phone_record.last_used = datetime.utcnow()
+                
+                db.commit()
+                logger.debug("Stored verification result in database")
+                
         except Exception as e:
-            logger.error(f"Error analyzing phone numbers: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error("Failed to store verification result", error=str(e))
     
     async def cleanup(self):
-        """Cleanup resources"""
+        """Enhanced cleanup with proper resource management"""
         try:
+            if self.sms_page:
+                await self.sms_page.close()
             if self.sms_context:
                 await self.sms_context.close()
             if self.browser:
                 await self.browser.close()
-            if hasattr(self, 'playwright') and self.playwright:
+            if self.playwright:
                 await self.playwright.stop()
-            logger.info("Browser closed successfully")
+            logger.info("SMS service handler cleaned up successfully")
         except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
+            logger.error("Error during cleanup", error=str(e))
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="SMS Service Automation Tool")
-    parser.add_argument('--username', type=str, help='SMS service username')
-    parser.add_argument('--password', type=str, help='SMS service password')
-    parser.add_argument('--csv', type=str, help='Path to CSV file with phone numbers')
-    parser.add_argument('--action', type=str, choices=['analyze', 'monitor', 'display', 'test'], default='analyze', help='Action to perform')
-    parser.add_argument('--duration', type=int, default=5, help='Duration in minutes for monitoring new messages')
-    parser.add_argument('--test-numbers', type=str, nargs='*', help='Phone numbers to test (for test action)')
-    parser.add_argument('--log-level', type=str, default=LOG_LEVEL, help='Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)')
-    return parser.parse_args()
 
-async def signup_airbnb_with_numbers(browser, phone_numbers: list, handler=None):
-    for phone_number in phone_numbers:
-        page = await browser.new_page()
-        await page.goto('https://www.airbnb.com/signup_login')
-        await page.wait_for_load_state('networkidle')
-        # Click "Continue with phone" tab if needed
+# Enhanced service automation classes
+class ServiceAutomator:
+    """Base class for service automation"""
+    
+    def __init__(self, service_type: ServiceType):
+        self.service_type = service_type
+        self.user_agent_manager = UserAgentManager()
+        self.success_count = 0
+        self.failure_count = 0
+    
+    async def request_verification_code(
+        self, 
+        phone_number: str, 
+        country: str,
+        playwright_instance
+    ) -> VerificationResult:
+        """Request verification code - to be implemented by subclasses"""
+        raise NotImplementedError
+    
+    def _generate_fake_profile(self) -> Dict[str, str]:
+        """Generate fake user profile"""
+        first_names = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Mary', 'Patricia', 'Jennifer', 'Linda']
+        last_names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez']
+        
+        first_name = random.choice(first_names)
+        last_name = random.choice(last_names)
+        
+        email_providers = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com']
+        email = f"{first_name.lower()}.{last_name.lower()}{random.randint(100, 999)}@{random.choice(email_providers)}"
+        
+        return {
+            'first_name': first_name,
+            'last_name': last_name,
+            'email': email,
+            'birth_year': random.randint(1980, 2000),
+            'birth_month': random.randint(1, 12),
+            'birth_day': random.randint(1, 28)
+        }
+
+
+class UberAutomator(ServiceAutomator):
+    """Enhanced Uber automation"""
+    
+    def __init__(self):
+        super().__init__(ServiceType.UBER)
+    
+    async def request_verification_code(
+        self, 
+        phone_number: str, 
+        country: str,
+        playwright_instance
+    ) -> VerificationResult:
+        """Request Uber verification code"""
         try:
-            await page.click('button[data-testid="signup-login-phone-tab"]')
-        except Exception:
-            pass  # If already on phone tab, ignore
-        # Fill the phone number
-        try:
-            await page.fill('input[name="phoneNumber"]', phone_number)
-            await page.click('button[type="submit"]')
-            logger.info(f'Submitted signup for phone number: {phone_number}')
+            # Format phone number
+            formatted_number = self._format_phone_number(phone_number, country)
+            
+            # Set up browser context
+            user_agent = self.user_agent_manager.get_random_agent()
+            headers = self.user_agent_manager.get_headers_for_agent(user_agent)
+            
+            browser = await playwright_instance.chromium.launch(
+                headless=config.browser.headless,
+                slow_mo=config.browser.slow_mo,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
+            
+            context = await browser.new_context(
+                user_agent=user_agent,
+                extra_http_headers=headers,
+                viewport={'width': config.browser.viewport_width, 'height': config.browser.viewport_height}
+            )
+            
+            page = await context.new_page()
+            
+            try:
+                # Navigate to Uber auth page
+                await page.goto("https://auth.uber.com/v2/?breeze_local_zone=dca1", timeout=30000)
+                await page.wait_for_load_state('networkidle')
+                
+                # Handle phone number input
+                phone_selectors = [
+                    '#PHONE_NUMBER',
+                    'input[type="tel"]',
+                    'input[name="phoneNumber"]',
+                    'input[data-testid="phone-number-input"]'
+                ]
+                
+                phone_input = None
+                for selector in phone_selectors:
+                    try:
+                        phone_input = await page.wait_for_selector(selector, timeout=5000)
+                        if phone_input:
+                            break
+                    except:
+                        continue
+                
+                if not phone_input:
+                    raise Exception("Phone input field not found")
+                
+                await phone_input.fill(formatted_number)
+                logger.info(f"Filled phone number: {formatted_number}")
+                
+                # Click continue button
+                continue_selectors = [
+                    'button[type="submit"]',
+                    'button:has-text("Continue")',
+                    'button:has-text("Next")',
+                    'button[data-testid="forward-button"]'
+                ]
+                
+                for selector in continue_selectors:
+                    try:
+                        button = await page.wait_for_selector(selector, timeout=3000)
+                        if button:
+                            await button.click()
+                            break
+                    except:
+                        continue
+                
+                # Wait for verification code input or error
+                await asyncio.sleep(3)
+                
+                # Check for errors
+                error_selectors = [
+                    '[data-testid="error-message"]',
+                    '.error-message',
+                    'div:has-text("error")',
+                    'div:has-text("invalid")'
+                ]
+                
+                for selector in error_selectors:
+                    try:
+                        error_element = await page.query_selector(selector)
+                        if error_element:
+                            error_text = await error_element.text_content()
+                            if error_text and len(error_text.strip()) > 0:
+                                self.failure_count += 1
+                                return VerificationResult(
+                                    phone_number=phone_number,
+                                    service=ServiceType.UBER,
+                                    success=False,
+                                    error=error_text.strip()
+                                )
+                    except:
+                        continue
+                
+                # Success if no errors found
+                self.success_count += 1
+                logger.info(f"Successfully requested Uber verification for {phone_number}")
+                
+                return VerificationResult(
+                    phone_number=phone_number,
+                    service=ServiceType.UBER,
+                    success=True
+                )
+                
+            finally:
+                await page.close()
+                await context.close()
+                await browser.close()
+                
         except Exception as e:
-            logger.error(f'Error submitting signup for {phone_number}: {e}')
-        await asyncio.sleep(5)  # Wait for the code to arrive
-        # Refresh SMS data and get verification code
-        if handler is not None and handler.sms_page is not None:
-            await handler.sms_page.reload()  # type: ignore[reportAttributeAccessIssue]
-            await handler.sms_page.wait_for_load_state('networkidle')  # type: ignore[reportGeneralTypeIssues]
-            messages = await handler.extract_sms_data_from_table()
-            clean_phone = phone_number.replace('+', '').replace('-', '').replace(' ', '')
-            found_code = None
-            for message in messages:
-                message_number = message['number'].replace('+', '').replace('-', '').replace(' ', '')
-                if (clean_phone == message_number or 
-                    clean_phone in message_number or 
-                    message_number in clean_phone or
-                    clean_phone.endswith(message_number[-8:]) or 
-                    message_number.endswith(clean_phone[-8:])):
-                    if message['cli'].upper() == 'AIRBNB':
-                        sms_text = message['sms']
-                        import re
-                        code_patterns = [
-                            r'verification code is (\d{6})',
-                            r'code is (\d{6})',
-                            r'code: (\d{6})',
-                            r'(\d{6})'
-                        ]
-                        for pattern in code_patterns:
-                            matches = re.findall(pattern, sms_text)
-                            if matches:
-                                found_code = matches[0]
-                                break
-                if found_code:
-                    break
-            if found_code:
-                logger.info(f'Verification code for {phone_number}: {found_code}')
-                print(f'Verification code for {phone_number}: {found_code}')
-            else:
-                logger.warning(f'No verification code found for {phone_number} after refresh.')
-        await page.close()
+            self.failure_count += 1
+            logger.error(f"Uber verification request failed for {phone_number}: {e}")
+            return VerificationResult(
+                phone_number=phone_number,
+                service=ServiceType.UBER,
+                success=False,
+                error=str(e)
+            )
+    
+    def _format_phone_number(self, phone_number: str, country: str) -> str:
+        """Format phone number for Uber"""
+        # Country code mapping
+        country_codes = {
+            'United States': '+1',
+            'United Kingdom': '+44',
+            'Canada': '+1',
+            'Australia': '+61',
+            'Germany': '+49',
+            'France': '+33',
+            'Italy': '+39',
+            'Spain': '+34',
+            'Brazil': '+55',
+            'India': '+91',
+            'China': '+86',
+            'Japan': '+81',
+            'South Korea': '+82',
+            'Mexico': '+52',
+            'Egypt': '+20',
+            'Nigeria': '+234',
+            'Ghana': '+233'
+        }
+        
+        # Clean phone number
+        clean_number = re.sub(r'[^\d]', '', phone_number)
+        
+        # Get country code
+        country_code = country_codes.get(country, '+1')
+        
+        # Remove country code if already present
+        country_digits = country_code[1:]
+        if clean_number.startswith(country_digits):
+            clean_number = clean_number[len(country_digits):]
+        
+        return f"{country_code}{clean_number}"
 
-async def get_fresh_verification_code_for_number(handler, sms_page, phone_number, timeout=120):
-    await sms_page.reload()
-    await sms_page.wait_for_load_state('networkidle')
-    initial_messages = await handler.extract_sms_data_from_table()
-    initial_count = len(initial_messages)
-    clean_phone = phone_number.replace('+', '').replace('-', '').replace(' ', '')
-    start_time = time.time()
-    signup_start_dt = datetime.now()
-    while time.time() - start_time < timeout:
-        await sms_page.reload()
-        await sms_page.wait_for_load_state('networkidle')
+
+class AirbnbAutomator(ServiceAutomator):
+    """Enhanced Airbnb automation"""
+    
+    def __init__(self):
+        super().__init__(ServiceType.AIRBNB)
+    
+    async def request_verification_code(
+        self, 
+        phone_number: str, 
+        country: str,
+        playwright_instance
+    ) -> VerificationResult:
+        """Request Airbnb verification code"""
         try:
-            await sms_page.wait_for_selector('#dt tbody', timeout=10000)
-        except:
-            await asyncio.sleep(5)
-            continue
-        sms_data = await handler.extract_sms_data_from_table()
-        current_count = len(sms_data)
-        if current_count > initial_count:
-            new_messages = sms_data[initial_count:]
-            for message in new_messages:
-                message_number = message['number'].replace('+', '').replace('-', '').replace(' ', '')
-                message_time_str = message.get('date', '').strip()
+            formatted_number = self._format_phone_number(phone_number, country)
+            profile = self._generate_fake_profile()
+            
+            user_agent = self.user_agent_manager.get_random_agent()
+            headers = self.user_agent_manager.get_headers_for_agent(user_agent)
+            
+            browser = await playwright_instance.chromium.launch(
+                headless=config.browser.headless,
+                slow_mo=config.browser.slow_mo
+            )
+            
+            context = await browser.new_context(
+                user_agent=user_agent,
+                extra_http_headers=headers,
+                viewport={'width': config.browser.viewport_width, 'height': config.browser.viewport_height}
+            )
+            
+            page = await context.new_page()
+            
+            try:
+                await page.goto("https://www.airbnb.com/signup_login", timeout=30000)
+                await page.wait_for_load_state('networkidle')
+                
+                # Click phone tab if needed
                 try:
-                    message_time = datetime.strptime(message_time_str, '%Y-%m-%d %H:%M:%S')
-                except Exception:
-                    message_time = signup_start_dt
-                if (message_time >= signup_start_dt and
-                    (clean_phone == message_number or 
-                     clean_phone in message_number or 
-                     message_number in clean_phone or
-                     clean_phone.endswith(message_number[-8:]) or 
-                     message_number.endswith(clean_phone[-8:]))):
-                    if message['cli'].upper() == 'AIRBNB':
-                        sms_text = message['sms']
-                        code_patterns = [
-                            r'verification code is (\d{6})',
-                            r'code is (\d{6})',
-                            r'code: (\d{6})',
-                            r'(\d{6})'
-                        ]
-                        for pattern in code_patterns:
-                            matches = re.findall(pattern, sms_text)
-                            if matches:
-                                return matches[0]
-            initial_count = current_count
-        await asyncio.sleep(5)
-    logger.warning(f'No new verification code found for {phone_number} after {timeout} seconds (checked by number and time)')
-    return None
+                    phone_tab = await page.wait_for_selector('button[data-testid="signup-login-phone-tab"]', timeout=5000)
+                    if phone_tab:
+                        await phone_tab.click()
+                        await asyncio.sleep(1)
+                except:
+                    pass
+                
+                # Select country code
+                try:
+                    country_select = await page.query_selector('select[data-testid="login-signup-countrycode"]')
+                    if country_select:
+                        country_code_value = self._get_airbnb_country_code(country)
+                        await country_select.select_option(value=country_code_value)
+                except Exception as e:
+                    logger.debug(f"Could not select country code: {e}")
+                
+                # Fill phone number
+                phone_input_selectors = [
+                    'input[name="phoneInputphone-login"]',
+                    'input[data-testid="phone-input"]',
+                    'input[type="tel"]'
+                ]
+                
+                phone_input = None
+                for selector in phone_input_selectors:
+                    try:
+                        phone_input = await page.wait_for_selector(selector, timeout=3000)
+                        if phone_input:
+                            break
+                    except:
+                        continue
+                
+                if not phone_input:
+                    raise Exception("Phone input not found")
+                
+                # Get local number part
+                local_number = self._get_local_number(formatted_number, country)
+                await phone_input.fill(local_number)
+                
+                # Submit form
+                submit_button = await page.wait_for_selector('button[type="submit"]', timeout=10000)
+                await submit_button.click()
+                
+                # Wait and check for success/error
+                await asyncio.sleep(3)
+                
+                # Check for errors
+                page_content = await page.content()
+                if any(error in page_content.lower() for error in ['error', 'invalid', 'blocked']):
+                    self.failure_count += 1
+                    return VerificationResult(
+                        phone_number=phone_number,
+                        service=ServiceType.AIRBNB,
+                        success=False,
+                        error="Form submission error detected"
+                    )
+                
+                self.success_count += 1
+                logger.info(f"Successfully requested Airbnb verification for {phone_number}")
+                
+                return VerificationResult(
+                    phone_number=phone_number,
+                    service=ServiceType.AIRBNB,
+                    success=True
+                )
+                
+            finally:
+                await page.close()
+                await context.close()
+                await browser.close()
+                
+        except Exception as e:
+            self.failure_count += 1
+            logger.error(f"Airbnb verification request failed for {phone_number}: {e}")
+            return VerificationResult(
+                phone_number=phone_number,
+                service=ServiceType.AIRBNB,
+                success=False,
+                error=str(e)
+            )
+    
+    def _format_phone_number(self, phone_number: str, country: str) -> str:
+        """Format phone number for Airbnb"""
+        # Similar to Uber formatting
+        country_codes = {
+            'United States': '1',
+            'Egypt': '20',
+            'Nigeria': '234',
+            'Ghana': '233',
+            'United Kingdom': '44',
+            'India': '91'
+        }
+        
+        clean_number = re.sub(r'[^\d]', '', phone_number)
+        country_code = country_codes.get(country, '1')
+        
+        if clean_number.startswith(country_code):
+            clean_number = clean_number[len(country_code):]
+        
+        return f"+{country_code}{clean_number}"
+    
+    def _get_airbnb_country_code(self, country: str) -> str:
+        """Get Airbnb-specific country code value"""
+        country_mapping = {
+            'United States': '1US',
+            'Egypt': '20EG',
+            'Nigeria': '234NG',
+            'Ghana': '233GH',
+            'United Kingdom': '44GB',
+            'India': '91IN'
+        }
+        return country_mapping.get(country, '1US')
+    
+    def _get_local_number(self, formatted_number: str, country: str) -> str:
+        """Extract local number part"""
+        country_codes = {
+            'United States': '+1',
+            'Egypt': '+20',
+            'Nigeria': '+234',
+            'Ghana': '+233',
+            'United Kingdom': '+44',
+            'India': '+91'
+        }
+        
+        country_code = country_codes.get(country, '+1')
+        if formatted_number.startswith(country_code):
+            return formatted_number[len(country_code):].lstrip('0')
+        
+        return formatted_number
 
-# --- Stealth/anti-detection improvements ---
-# For each signup, use a new incognito context, rotate user agent, set headers, and clear cookies/storage by context isolation.
-# (If Playwright Stealth plugin for Python becomes available, it should be used here for even better anti-detection.)
 
-# --- Proxy Management ---
-# class ProxyManager:
-#     def __init__(self, proxies):
-#         self.proxies = proxies
-#         self.health = {proxy: True for proxy in proxies}
-#         self.index = 0
-#
-#     def get_proxy(self):
-#         healthy = [p for p in self.proxies if self.health.get(p, True)]
-#         if not healthy:
-#             healthy = self.proxies
-#         proxy = healthy[self.index % len(healthy)]
-#         self.index += 1
-#         return proxy
-#
-#     def mark_bad(self, proxy):
-#         self.health[proxy] = False
-
-# --- Disable proxy testing at startup ---
-# if os.path.exists(RAW_PROXY_FILE):
-#     extracted = extract_proxies(RAW_PROXY_FILE, CLEAN_PROXY_FILE)
-#     if extracted is not None:
-#         PROXIES = extracted
-#     else:
-#         PROXIES = FALLBACK_PROXIES
-# else:
-#     PROXIES = FALLBACK_PROXIES
-# proxy_manager = ProxyManager(PROXIES)
-
-# --- Stealth Script Stub ---
-async def apply_stealth(page):
-    # Stub: In production, inject stealth JS here
-    pass
-
-# --- 2Captcha Stub ---
-def solve_captcha_with_2captcha(image_bytes, api_key):
-    # Stub: Integrate with 2captcha API here
-    return None
-
-# --- Update test_proxies_with_playwright ---
-def test_proxies_with_playwright(proxies, test_url='https://www.airbnb.com/'):
-    from playwright.sync_api import sync_playwright
-    logger.info('Testing all proxies for connectivity...')
-    working = []
-    failed = []
-    with sync_playwright() as p:
-        for proxy_str in proxies:
-            proxy_parts = proxy_str.split(':')
-            proxy_config = {
-                'server': f'http://{proxy_parts[0]}:{proxy_parts[1]}'
-            }
-            if len(proxy_parts) == 4:
-                proxy_config['username'] = proxy_parts[2]
-                proxy_config['password'] = proxy_parts[3]
-            logger.info(f'Testing proxy: {proxy_config}')
-            try:
-                browser = p.chromium.launch(headless=True, proxy=proxy_config)  # type: ignore
-                context = browser.new_context()
-                page = context.new_page()
-                response = page.goto(test_url, timeout=15000)
-                status = response.status if response else None
-                if status and 200 <= status < 400:
-                    logger.info(f'[OK] {proxy_str} (Status: {status})')
-                    working.append(proxy_str)
-                else:
-                    logger.warning(f'[FAIL] {proxy_str} (Status: {status})')
-                    failed.append(proxy_str)
-                page.close()
-                context.close()
-                browser.close()
-            except Exception as e:
-                logger.error(f'[ERROR] {proxy_str} - {e}', exc_info=True)
-                failed.append(proxy_str)
-    logger.info(f'Proxy test summary: {len(working)} working, {len(failed)} failed')
-    return working, failed
-
-# --- Use ProxyManager in main logic ---
-# Replace PROXIES with ProxyManager
-CLEAN_PROXY_FILE = 'proxies_clean.txt'
-RAW_PROXY_FILE = 'proxies_raw.txt'
-FALLBACK_PROXIES = [
-    '88.198.212.91:3128',
-    '185.93.89.145:24666',
-    '43.131.9.114:1777',
-    '209.38.83.56:1088',
-    '222.59.173.105:44228',
-    '74.119.147.209:4145',
-    '192.95.33.162:1129',
-]
-
-def extract_proxies(raw_file='proxies_raw.txt', clean_file='proxies_clean.txt'):
-    """Extract proxy credentials from a raw proxy list and save to a clean file."""
-    if not os.path.exists(raw_file):
-        return None
-    proxies = []
-    with open(raw_file, 'r', encoding='utf-8') as infile, open(clean_file, 'w', encoding='utf-8') as outfile:
-        for line in infile:
-            proxy = line.split('|')[0].strip()
-            if proxy:
-                proxies.append(proxy)
-                outfile.write(proxy + '\n')
-    return proxies
-
-# if os.path.exists(RAW_PROXY_FILE):
-#     extracted = extract_proxies(RAW_PROXY_FILE, CLEAN_PROXY_FILE)
-#     if extracted is not None:
-#         PROXIES = extracted
-#     else:
-#         PROXIES = FALLBACK_PROXIES
-# else:
-#     PROXIES = FALLBACK_PROXIES
-# proxy_manager = ProxyManager(PROXIES)
-
-# --- Refactor create_full_airbnb_account_with_sms to rotate proxy and user-agent ---
-async def create_full_airbnb_account_with_sms(playwright, handler, phone_number, country_name):
-    country_code_value = AIRBNB_COUNTRY_CODE_MAP.get(country_name, '20EG')
-    first_name, last_name = random_name()
-    email = random_email()
-    birthday = f"19{random.randint(80, 99)}-{random.randint(1,12):02d}-{random.randint(1,28):02d}"
-
-    country_prefix = ''.join([c for c in country_code_value if c.isdigit()])
-    local_number = phone_number
-    if phone_number.startswith(country_prefix):
-        local_number = phone_number[len(country_prefix):]
-    local_number = local_number.lstrip('0').strip()
-
-    user_agent = random.choice(USER_AGENTS)
-    headers = BROWSER_HEADERS.copy()
-    headers['User-Agent'] = user_agent
-    # proxy_str = proxy_manager.get_proxy()
-    # proxy_parts = proxy_str.split(':')
-    # proxy_config = {
-    #     'server': f'http://{proxy_parts[0]}:{proxy_parts[1]}'
-    # }
-    # if len(proxy_parts) == 4:
-    #     proxy_config['username'] = proxy_parts[2]
-    #     proxy_config['password'] = proxy_parts[3]
-    logger.info(f"[STEALTH] Using User-Agent: {user_agent} | Proxy: DISABLED")
-    # logger.info(f"Trying proxy config: {proxy_config}")
-    try:
-        browser = await playwright.chromium.launch(
-            headless=False,
-            slow_mo=1000
-            # , proxy=proxy_config  # Proxy disabled
-        )
-    except Exception as e:
-        logger.error(f'Browser failed to launch: {e}', exc_info=True)
-        # proxy_manager.mark_bad(proxy_str)  # Proxy disabled
-        return
-    context = await browser.new_context(
-        user_agent=user_agent,
-        extra_http_headers=headers,
-        locale='en-US'
-    )
-    airbnb_page = await context.new_page()
-    await apply_stealth(airbnb_page)
-    try:
-        await airbnb_page.goto('https://www.airbnb.com/signup_login')
-        await airbnb_page.wait_for_load_state('networkidle')
-    except Exception as e:
-        logger.error(f'Proxy failed or blocked for {e}', exc_info=True)
-        await airbnb_page.close()
-        await context.close()
-        await browser.close()
-        return  # Skip to next number/proxy
-    try:
-        await airbnb_page.click('button[data-testid="signup-login-phone-tab"]')
-    except Exception:
-        pass
-    try:
-        await airbnb_page.select_option('select[data-testid="login-signup-countrycode"]', value=country_code_value)
-    except Exception as e:
-        logger.warning(f"Could not select country code: {e}")
-    try:
-        await airbnb_page.fill('input[name="phoneInputphone-login"]', local_number)
-        await airbnb_page.click('button[type="submit"]')
-        logger.info(f'Submitted signup for phone number: {local_number} (original: {phone_number})')
-    except Exception as e:
-        logger.error(f'Error submitting signup for {phone_number}: {e}')
-        await airbnb_page.close()
-        await context.close()
-        await browser.close()
-        return
-    # Wait for code input to appear (new selector)
-    try:
-        await airbnb_page.wait_for_selector('input#phone-verification-code-form__code-input', timeout=30000)
-    except Exception as e:
-        logger.error(f'Code input did not appear for {phone_number}: {e}')
-        await airbnb_page.close()
-        await context.close()
-        await browser.close()
-        return
-    # Open SMSCDRStats in a new tab and get code
-    sms_page = await context.new_page()
-    await sms_page.goto('http://91.232.105.47/ints/client/SMSCDRStats')
-    await sms_page.wait_for_load_state('networkidle')
-    code = await get_fresh_verification_code_for_number(handler, sms_page, phone_number, timeout=120)
-    await sms_page.close()
-    if not code:
-        logger.error(f'No verification code found for {phone_number}')
-        await airbnb_page.close()
-        await context.close()
-        await browser.close()
-        return
-    # Enter code in Airbnb (new selector)
-    try:
-        await airbnb_page.fill('input#phone-verification-code-form__code-input', code)
-        # Find the enabled Continue button and click it
-        buttons = await airbnb_page.query_selector_all('button')
-        for btn in buttons:
-            text = await btn.text_content()
-            disabled = await btn.get_attribute('disabled')
-            if text and 'Continue' in text and not disabled:
-                await btn.click()
-                break
-        logger.info(f'Entered verification code for {phone_number}: {code}')
-        # Check for max confirmation attempts error
-        await asyncio.sleep(2)
-        page_text = await airbnb_page.content()
-        if 'max confirmation attempts' in page_text.lower() or 'try again in 1 hour' in page_text.lower():
-            logger.warning(f'Max confirmation attempts reached for {phone_number}. Skipping this number for now.')
-            await airbnb_page.close()
-            await context.close()
-            await browser.close()
-            return
-    except Exception as e:
-        logger.error(f'Error entering verification code for {phone_number}: {e}')
-        await airbnb_page.close()
-        await context.close()
-        await browser.close()
-        return
-    # --- Complete the signup: Name, Email, Birthday ---
-    # 1. Name
-    try:
-        await airbnb_page.wait_for_selector('input[name="firstName"]', timeout=20000)
-        await airbnb_page.fill('input[name="firstName"]', first_name)
-        await airbnb_page.fill('input[name="lastName"]', last_name)
-        buttons = await airbnb_page.query_selector_all('button')
-        for btn in buttons:
-            text = await btn.text_content()
-            if text and ('Continue' in text or 'Next' in text):
-                await btn.click()
-                break
-        logger.info(f'Entered name for {phone_number}: {first_name} {last_name}')
-    except Exception as e:
-        logger.warning(f'Name step may be skipped or failed: {e}')
-    # 2. Email
-    try:
-        await airbnb_page.wait_for_selector('input[type="email"]', timeout=20000)
-        await airbnb_page.fill('input[type="email"]', email)
-        buttons = await airbnb_page.query_selector_all('button')
-        for btn in buttons:
-            text = await btn.text_content()
-            if text and ('Continue' in text or 'Next' in text):
-                await btn.click()
-                break
-        logger.info(f'Entered email for {phone_number}: {email}')
-    except Exception as e:
-        logger.warning(f'Email step may be skipped or failed: {e}')
-    # 3. Birthday
-    try:
-        await airbnb_page.wait_for_selector('input[name="birthdate"]', timeout=20000)
-        await airbnb_page.fill('input[name="birthdate"]', birthday)
-        buttons = await airbnb_page.query_selector_all('button')
-        for btn in buttons:
-            text = await btn.text_content()
-            if text and ('Continue' in text or 'Next' in text):
-                await btn.click()
-                break
-        logger.info(f'Entered birthday for {phone_number}: {birthday}')
-    except Exception as e:
-        logger.warning(f'Birthday step may be skipped or failed: {e}')
-    await asyncio.sleep(3)
-    logger.info(f'Account creation flow finished for {phone_number}')
-    await airbnb_page.close()
-    await context.close()
-    await browser.close()
-
-MAX_CONCURRENT_TASKS = 5  # Adjust as needed for rate limiting
-semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
-
-async def phone_worker(queue, handler, playwright):
-    while True:
-        phone_number, country_name = await queue.get()
+# Enhanced orchestration class
+class EnhancedVerificationOrchestrator:
+    """Orchestrates the entire verification process"""
+    
+    def __init__(self):
+        self.sms_handler = None
+        self.automators = {
+            ServiceType.UBER: UberAutomator(),
+            ServiceType.AIRBNB: AirbnbAutomator()
+        }
+        self.results: List[VerificationResult] = []
+        self.session_id = str(uuid.uuid4())
+        
+    async def initialize(self, username: str, password: str):
+        """Initialize the orchestrator"""
+        self.sms_handler = EnhancedSMSServiceHandler(username, password)
+        await self.sms_handler.__aenter__()
+        
+        # Login to SMS service
+        if not await self.sms_handler.login_to_sms_service():
+            raise LoginError("Failed to login to SMS service")
+        
+        logger.info("Verification orchestrator initialized successfully")
+    
+    async def process_phone_numbers(
+        self, 
+        phone_data: List[Dict[str, str]], 
+        service_type: ServiceType
+    ) -> List[VerificationResult]:
+        """Process multiple phone numbers"""
+        
+        if service_type not in self.automators:
+            raise ValueError(f"Unsupported service type: {service_type}")
+        
+        automator = self.automators[service_type]
+        results = []
+        
+        async with async_playwright() as playwright:
+            # Process in batches to manage resources
+            batch_size = config.concurrency.batch_size
+            
+            for i in range(0, len(phone_data), batch_size):
+                batch = phone_data[i:i + batch_size]
+                
+                # Create semaphore for concurrency control
+                semaphore = asyncio.Semaphore(config.concurrency.max_workers)
+                
+                # Process batch
+                tasks = [
+                    self._process_single_number(
+                        phone_info, service_type, automator, playwright, semaphore
+                    )
+                    for phone_info in batch
+                ]
+                
+                batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                # Process results
+                for result in batch_results:
+                    if isinstance(result, Exception):
+                        logger.error(f"Task failed with exception: {result}")
+                    else:
+                        results.append(result)
+                        self.results.append(result)
+                
+                # Progress update
+                logger.info(f"Completed batch {i//batch_size + 1}/{(len(phone_data) + batch_size - 1)//batch_size}")
+                
+                # Rate limiting between batches
+                if i + batch_size < len(phone_data):
+                    delay = random.uniform(*config.services.rate_limit_delay)
+                    await asyncio.sleep(delay)
+        
+        return results
+    
+    async def _process_single_number(
+        self,
+        phone_info: Dict[str, str],
+        service_type: ServiceType,
+        automator: ServiceAutomator,
+        playwright_instance,
+        semaphore: asyncio.Semaphore
+    ) -> VerificationResult:
+        """Process a single phone number"""
+        
         async with semaphore:
+            phone_number = phone_info['Number']
+            country = phone_info.get('Range', phone_info.get('Country', 'United States'))
+            
             try:
-                await create_full_airbnb_account_with_sms(playwright, handler, phone_number, country_name)
-            except Exception as e:
-                logger.error(f"Worker error for {phone_number}: {e}")
-        queue.task_done()
-
-async def main():
-    args = parse_args()
-    # logger.setLevel(getattr(logging, args.log_level.upper(), logging.INFO))  # Removed: not supported by structlog
-    config = load_config()
-    SMS_USERNAME = args.username or config.get('SMS_USERNAME', '')
-    SMS_PASSWORD = args.password or config.get('SMS_PASSWORD', '')
-    csv_path = args.csv
-    if not SMS_USERNAME or not SMS_PASSWORD:
-        logger.error('SMS_USERNAME and SMS_PASSWORD must be set via CLI, config.json, or environment variables.')
-        return
-    handler = SMSServiceHandler(SMS_USERNAME, SMS_PASSWORD)
-    try:
-        await handler.initialize()
-        if await handler.login_to_sms_service():
-            logger.info("Successfully logged into SMS service")
-            if args.action == 'display':
-                await handler.display_existing_messages()
-            elif args.action == 'analyze':
-                await handler.display_existing_messages()
-                df = handler.read_csv(csv_path)
-                await handler.analyze_phone_numbers(df)
-                async with async_playwright() as playwright:
-                    queue = asyncio.Queue()
-                    for _, row in df.iterrows():
-                        phone_number = str(row['Number']).strip()
-                        country_name = str(row['Range']).strip()
-                        await queue.put((phone_number, country_name))
-                    workers = [asyncio.create_task(phone_worker(queue, handler, playwright)) for _ in range(MAX_CONCURRENT_TASKS)]
-                    await queue.join()
-                    for w in workers:
-                        w.cancel()
-            elif args.action == 'monitor':
-                await handler.display_existing_messages()
-                await handler.monitor_new_messages(duration_minutes=args.duration)
-            elif args.action == 'test':
-                if args.test_numbers:
-                    await handler.test_specific_phone_numbers(args.test_numbers)
+                logger.info(f"Processing {phone_number} for {service_type.value}")
+                
+                # Request verification code
+                request_result = await automator.request_verification_code(
+                    phone_number, country, playwright_instance
+                )
+                
+                if not request_result.success:
+                    return request_result
+                
+                # Wait for SMS verification code
+                verification_result = await self.sms_handler.get_verification_code_intelligent(
+                    phone_number, service_type
+                )
+                
+                # Merge results
+                if verification_result and verification_result.success:
+                    return VerificationResult(
+                        phone_number=phone_number,
+                        service=service_type,
+                        success=True,
+                        code=verification_result.code
+                    )
                 else:
-                    logger.error('No phone numbers provided for test action.')
-            else:
-                logger.error(f'Unknown action: {args.action}')
-            if handler.browser:
-                airbnb_page = await handler.browser.new_page()
-                await airbnb_page.goto('https://www.airbnb.com/signup_login')
-                logger.info('Opened Airbnb signup/login page in a new browser tab.')
-        else:
-            logger.error("Failed to login to SMS service")
-    except Exception as e:
-        logger.error(f"Main execution error: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        await handler.cleanup()
+                    return VerificationResult(
+                        phone_number=phone_number,
+                        service=service_type,
+                        success=False,
+                        error="SMS verification code not received"
+                    )
+                    
+            except Exception as e:
+                logger.error(f"Error processing {phone_number}: {e}")
+                return VerificationResult(
+                    phone_number=phone_number,
+                    service=service_type,
+                    success=False,
+                    error=str(e)
+                )
+            finally:
+                # Rate limiting
+                delay = random.uniform(*config.services.rate_limit_delay)
+                await asyncio.sleep(delay)
+    
+    def generate_report(self) -> Dict[str, Any]:
+        """Generate comprehensive report"""
+        if not self.results:
+            return {'status': 'No results to report'}
+        
+        # Calculate statistics
+        total_attempts = len(self.results)
+        successful = sum(1 for r in self.results if r.success)
+        failed = total_attempts - successful
+        success_rate = (successful / total_attempts) * 100 if total_attempts > 0 else 0
+        
+        # Group by service
+        service_stats = {}
+        for service_type in ServiceType:
+            service_results = [r for r in self.results if r.service == service_type]
+            if service_results:
+                service_successful = sum(1 for r in service_results if r.success)
+                service_stats[service_type.value] = {
+                    'total': len(service_results),
+                    'successful': service_successful,
+                    'failed': len(service_results) - service_successful,
+                    'success_rate': (service_successful / len(service_results)) * 100
+                }
+        
+        # Error analysis
+        error_types = {}
+        for result in self.results:
+            if not result.success and result.error:
+                error_type = result.error[:50]  # First 50 chars
+                error_types[error_type] = error_types.get(error_type, 0) + 1
+        
+        # Successful codes
+        successful_codes = [
+            {
+                'phone_number': r.phone_number,
+                'service': r.service.value,
+                'code': r.code,
+                'timestamp': r.timestamp.isoformat()
+            }
+            for r in self.results if r.success and r.code
+        ]
+        
+        return {
+            'session_id': self.session_id,
+            'timestamp': datetime.utcnow().isoformat(),
+            'summary': {
+                'total_attempts': total_attempts,
+                'successful': successful,
+                'failed': failed,
+                'success_rate': round(success_rate, 2)
+            },
+            'service_breakdown': service_stats,
+            'error_analysis': error_types,
+            'successful_verifications': successful_codes,
+            'processing_time': (datetime.utcnow() - datetime.fromisoformat(self.session_id.split('-')[0])).total_seconds() if '-' in self.session_id else 0
+        }
+    
+    async def cleanup(self):
+        """Cleanup resources"""
+        if self.sms_handler:
+            await self.sms_handler.__aexit__(None, None, None)
+
+
+# Enhanced CSV processing
+class CSVProcessor:
+    """Enhanced CSV processing with validation and normalization"""
+    
+    @staticmethod
+    def load_and_validate_csv(file_path: str) -> pd.DataFrame:
+        """Load and validate CSV file"""
         try:
-            loop = asyncio.get_running_loop()
-            if loop.is_running():
-                loop.stop()
-        except Exception:
-            pass
+            # Try different encodings
+            encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+            df = None
+            
+            for encoding in encodings:
+                try:
+                    df = pd.read_csv(file_path, encoding=encoding)
+                    logger.info(f"Successfully loaded CSV with {encoding} encoding")
+                    break
+                except UnicodeDecodeError:
+                    continue
+            
+            if df is None:
+                raise ValueError("Could not read CSV file with any supported encoding")
+            
+            # Validate required columns
+            required_columns = ['Number']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                # Try to find similar column names
+                available_cols = df.columns.tolist()
+                phone_candidates = [col for col in available_cols if 
+                                 any(keyword in col.lower() for keyword in ['phone', 'number', 'mobile', 'cell'])]
+                
+                if phone_candidates:
+                    df = df.rename(columns={phone_candidates[0]: 'Number'})
+                    logger.info(f"Mapped column '{phone_candidates[0]}' to 'Number'")
+                else:
+                    raise ValueError(f"Required columns missing: {missing_columns}")
+            
+            # Add default country column if missing
+            if 'Range' not in df.columns and 'Country' not in df.columns:
+                df['Range'] = 'United States'  # Default country
+                logger.info("Added default country column")
+            
+            # Clean and validate phone numbers
+            df['Number'] = df['Number'].astype(str).str.strip()
+            df = df[df['Number'].str.len() > 5]  # Remove obviously invalid numbers
+            df = df.dropna(subset=['Number'])
+            
+            # Remove duplicates
+            initial_count = len(df)
+            df = df.drop_duplicates(subset=['Number'])
+            removed_duplicates = initial_count - len(df)
+            
+            if removed_duplicates > 0:
+                logger.info(f"Removed {removed_duplicates} duplicate phone numbers")
+            
+            logger.info(f"Loaded {len(df)} valid phone numbers from CSV")
+            return df
+            
+        except Exception as e:
+            logger.error(f"Error loading CSV file: {e}")
+            raise
+    
+    @staticmethod
+    def find_csv_files(directory: str = ".") -> List[str]:
+        """Find CSV files in directory"""
+        patterns = ["*SMS*.csv", "*Number*.csv", "*Phone*.csv", "*.csv"]
+        found_files = []
+        
+        for pattern in patterns:
+            files = glob.glob(os.path.join(directory, pattern))
+            found_files.extend(files)
+        
+        # Remove duplicates and sort by modification time
+        unique_files = list(set(found_files))
+        unique_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+        
+        return unique_files
+
+
+# Enhanced logging setup
+def setup_enhanced_logging():
+    """Setup enhanced logging with structured output"""
+    
+    # Configure structlog
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.dev.ConsoleRenderer(colors=True)
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+        context_class=dict,
+        logger_factory=structlog.PrintLoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+    
+    # Setup rich logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
+    )
+
+# Initialize logging
+setup_enhanced_logging()
+logger = structlog.get_logger()
+
+
+# Enhanced CLI interface
+def create_argument_parser() -> argparse.ArgumentParser:
+    """Create enhanced argument parser"""
+    parser = argparse.ArgumentParser(
+        description="Enhanced SMS Verification Automation Tool",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --service uber --csv phones.csv
+  %(prog)s --service airbnb --csv phones.csv --headless
+  %(prog)s --display-messages
+  %(prog)s --test-number +1234567890 --service uber
+        """
+    )
+    
+    # Authentication
+    auth_group = parser.add_argument_group('Authentication')
+    auth_group.add_argument('--username', type=str, help='SMS service username')
+    auth_group.add_argument('--password', type=str, help='SMS service password')
+    
+    # Input data
+    data_group = parser.add_argument_group('Input Data')
+    data_group.add_argument('--csv', type=str, help='Path to CSV file with phone numbers')
+    data_group.add_argument('--test-number', type=str, help='Single phone number to test')
+    
+    # Service selection
+    service_group = parser.add_argument_group('Service Options')
+    service_group.add_argument(
+        '--service', 
+        type=str, 
+        choices=[s.value for s in ServiceType], 
+        default=ServiceType.UBER.value,
+        help='Service to request verification codes from'
+    )
+    
+    # Actions
+    action_group = parser.add_argument_group('Actions')
+    action_group.add_argument(
+        '--action', 
+        type=str, 
+        choices=['verify', 'display-messages', 'test-single'], 
+        default='verify',
+        help='Action to perform'
+    )
+    
+    # Browser options
+    browser_group = parser.add_argument_group('Browser Options')
+    browser_group.add_argument('--headless', action='store_true', help='Run browsers in headless mode')
+    browser_group.add_argument('--slow-mo', type=int, default=100, help='Slow motion delay in ms')
+    
+    # Performance options
+    perf_group = parser.add_argument_group('Performance Options')
+    perf_group.add_argument('--max-workers', type=int, default=3, help='Maximum concurrent workers')
+    perf_group.add_argument('--batch-size', type=int, default=10, help='Batch size for processing')
+    perf_group.add_argument('--timeout', type=int, default=180, help='Verification timeout in seconds')
+    
+    # Output options
+    output_group = parser.add_argument_group('Output Options')
+    output_group.add_argument('--output-format', choices=['json', 'csv', 'table'], default='table', help='Output format')
+    output_group.add_argument('--output-file', type=str, help='Output file path')
+    output_group.add_argument('--verbose', '-v', action='store_true', help='Verbose logging')
+    
+    return parser
+
+
+def display_results_table(results: List[VerificationResult]):
+    """Display results in a formatted table"""
+    table = Table(title="Verification Results")
+    
+    table.add_column("Phone Number", style="cyan")
+    table.add_column("Service", style="magenta")
+    table.add_column("Status", style="green")
+    table.add_column("Code", style="yellow")
+    table.add_column("Error", style="red")
+    table.add_column("Timestamp", style="blue")
+    
+    for result in results:
+        status = "✅ Success" if result.success else "❌ Failed"
+        code = result.code or "-"
+        error = result.error[:30] + "..." if result.error and len(result.error) > 30 else (result.error or "-")
+        timestamp = result.timestamp.strftime("%H:%M:%S") if result.timestamp else "-"
+        
+        table.add_row(
+            result.phone_number,
+            result.service.value.upper(),
+            status,
+            code,
+            error,
+            timestamp
+        )
+    
+    console.print(table)
+
+
+def save_results(results: List[VerificationResult], format: str, file_path: str = None):
+    """Save results in specified format"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    if format == 'json':
+        file_path = file_path or f'verification_results_{timestamp}.json'
+        data = [
+            {
+                'phone_number': r.phone_number,
+                'service': r.service.value,
+                'success': r.success,
+                'code': r.code,
+                'error': r.error,
+                'timestamp': r.timestamp.isoformat() if r.timestamp else None
+            }
+            for r in results
+        ]
+        
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+            
+    elif format == 'csv':
+        file_path = file_path or f'verification_results_{timestamp}.csv'
+        data = []
+        for r in results:
+            data.append({
+                'phone_number': r.phone_number,
+                'service': r.service.value,
+                'success': r.success,
+                'code': r.code,
+                'error': r.error,
+                'timestamp': r.timestamp.isoformat() if r.timestamp else None
+            })
+        
+        df = pd.DataFrame(data)
+        df.to_csv(file_path, index=False)
+    
+    console.print(f"[green]Results saved to {file_path}[/]")
+
+
+# Main execution function
+async def main():
+    """Enhanced main function with comprehensive error handling"""
+    try:
+        # Parse arguments
+        parser = create_argument_parser()
+        args = parser.parse_args()
+        
+        # Update config with CLI arguments
+        if args.headless:
+            config.browser.headless = True
+        if args.slow_mo:
+            config.browser.slow_mo = args.slow_mo
+        if args.max_workers:
+            config.concurrency.max_workers = args.max_workers
+        if args.batch_size:
+            config.concurrency.batch_size = args.batch_size
+        if args.timeout:
+            config.services.verification_timeout = args.timeout
+        
+        # Set verbose logging
+        if args.verbose:
+            logging.getLogger().setLevel(logging.DEBUG)
+        
+        # Get credentials
+        username = args.username or config.sms_service.username or os.getenv('SMS_USERNAME')
+        password = args.password or config.sms_service.password or os.getenv('SMS_PASSWORD')
+        
+        if not username or not password:
+            console.print("[red]Error: SMS service credentials not provided[/]")
+            console.print("Use --username and --password, or set SMS_USERNAME and SMS_PASSWORD environment variables")
+            return 1
+        
+        # Display header
+        console.rule("[bold blue]Enhanced SMS Verification Automation[/]")
+        console.print(f"[bold]Session ID:[/] {uuid.uuid4()}")
+        console.print(f"[bold]Service:[/] {args.service.upper()}")
+        console.print(f"[bold]Action:[/] {args.action}")
+        
+        # Initialize orchestrator
+        orchestrator = EnhancedVerificationOrchestrator()
+        
+        try:
+            await orchestrator.initialize(username, password)
+            
+            if args.action == 'display-messages':
+                # Display existing messages
+                console.print("\n[bold yellow]Displaying existing SMS messages...[/]")
+                await orchestrator.sms_handler.display_existing_messages()
+                
+            elif args.action == 'test-single':
+                if not args.test_number:
+                    console.print("[red]Error: --test-number required for test-single action[/]")
+                    return 1
+                
+                console.print(f"\n[bold yellow]Testing single number: {args.test_number}[/]")
+                
+                phone_data = [{'Number': args.test_number, 'Range': 'United States'}]
+                service_type = ServiceType(args.service)
+                
+                results = await orchestrator.process_phone_numbers(phone_data, service_type)
+                
+                # Display results
+                display_results_table(results)
+                
+            elif args.action == 'verify':
+                # Load phone numbers
+                if args.csv:
+                    csv_file = args.csv
+                elif args.test_number:
+                    # Create temporary data for single number
+                    phone_data = [{'Number': args.test_number, 'Range': 'United States'}]
+                else:
+                    # Find CSV file automatically
+                    csv_files = CSVProcessor.find_csv_files()
+                    if not csv_files:
+                        console.print("[red]Error: No CSV file found. Use --csv to specify file path[/]")
+                        return 1
+                    csv_file = csv_files[0]
+                    console.print(f"[yellow]Using CSV file: {csv_file}[/]")
+                
+                if not args.test_number:
+                    # Load from CSV
+                    df = CSVProcessor.load_and_validate_csv(csv_file)
+                    phone_data = df.to_dict('records')
+                
+                console.print(f"\n[bold green]Processing {len(phone_data)} phone numbers...[/]")
+                
+                # Process phone numbers
+                service_type = ServiceType(args.service)
+                
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TaskProgressColumn(),
+                    console=console
+                ) as progress:
+                    task = progress.add_task("Processing phone numbers...", total=len(phone_data))
+                    
+                    results = await orchestrator.process_phone_numbers(phone_data, service_type)
+                    progress.update(task, completed=len(phone_data))
+                
+                # Display results
+                console.print("\n[bold blue]Results Summary[/]")
+                if args.output_format == 'table':
+                    display_results_table(results)
+                
+                # Generate and display report
+                report = orchestrator.generate_report()
+                
+                console.print(f"\n[bold green]Success Rate: {report['summary']['success_rate']:.1f}%[/]")
+                console.print(f"[bold]Total Attempts:[/] {report['summary']['total_attempts']}")
+                console.print(f"[bold]Successful:[/] {report['summary']['successful']}")
+                console.print(f"[bold]Failed:[/] {report['summary']['failed']}")
+                
+                # Save results
+                if args.output_file or args.output_format != 'table':
+                    save_results(results, args.output_format, args.output_file)
+                
+                # Save report
+                report_file = f"verification_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                with open(report_file, 'w') as f:
+                    json.dump(report, f, indent=2, default=str)
+                console.print(f"[green]Detailed report saved to {report_file}[/]")
+            
+        finally:
+            await orchestrator.cleanup()
+        
+        console.rule("[bold green]Process Completed Successfully[/]")
+        return 0
+        
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Process interrupted by user[/]")
+        return 1
+    except Exception as e:
+        console.print(f"\n[red]Fatal error: {e}[/]")
+        logger.error("Fatal error occurred", error=str(e), traceback=traceback.format_exc())
+        return 1
+
 
 if __name__ == "__main__":
-    # Test all proxies before running main automation
-    # test_proxies_with_playwright(PROXIES) # Proxy disabled
-    import sys
-    if os.name == 'nt':
-        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info('Interrupted by user. Exiting...')
+        # Set event loop policy for Windows
+        if os.name == 'nt':
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        
+        # Run main function
+        exit_code = asyncio.run(main())
+        sys.exit(exit_code)
+        
+    except Exception as e:
+        console.print(f"[red]Critical error: {e}[/]")
+        sys.exit(1)
