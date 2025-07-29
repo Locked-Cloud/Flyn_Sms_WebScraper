@@ -1,0 +1,14 @@
+{
+  "session_id": "541379a2-08da-496f-8912-3969a35dfd7b",
+  "timestamp": "2025-07-29T00:40:37.270380",
+  "summary": {
+    "total_attempts": 10,
+    "successful": 0,
+    "failed": 10,
+    "success_rate": 0.0
+  },
+  "error_analysis": {
+    "cookies[3].sameSite: expected one of (Strict|Lax|N": 10
+  },
+  "successful_verifications": []
+}
