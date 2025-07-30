@@ -4,31 +4,29 @@
     "password": "600600",
     "base_url": "http://91.232.105.47/ints",
     "timeout": 30,
-    "max_retries": 3
+    "max_retries": 3,
+    "session_timeout": 3600
   },
-  "airbnb": {
-    "signup_url": "https://www.airbnb.com/signup_login",
+  "services": {
+    "valr_signup_url": "https://www.valr.com/en/signup",
+    "valr_verify_url": "https://www.valr.com/en/verify/phone",
     "max_attempts_per_number": 3,
     "wait_between_attempts": 5,
-    "timeout": 60
+    "verification_timeout": 180,
+    "rate_limit_delay": [2.0, 8.0]
   },
-  "proxy": {
+  "browser": {
+    "headless": true,
+    "slow_mo": 100,
+    "viewport_width": 1920,
+    "viewport_height": 1080,
+    "user_agent_rotation": true,
+    "stealth_mode": true
+  },
+  "proxy_pool": {
     "enabled": false,
-    "test_url": "https://www.airbnb.com/",
-    "test_timeout": 15,
-    "rotate_every": 10
-  },
-  "database": {
-    "url": "sqlite:///sms.db",
-    "echo": false
-  },
-  "logging": {
-    "level": "INFO",
-    "file": "sms_service.log",
-    "format": "json"
-  },
-  "concurrency": {
-    "max_workers": 5,
-    "batch_size": 10
+    "proxy_list": [],
+    "rotation_strategy": "random",
+    "max_failures_per_proxy": 3
   }
 }
