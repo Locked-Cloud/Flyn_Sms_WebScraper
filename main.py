@@ -304,6 +304,47 @@ except Exception as e:
     console.print(f"[red]Database initialization error: {e}[/]")
     raise
 
+# Error handler decorator
+def handle_errors(error_types: Dict[type, str] = None, max_retries: int = 3):
+    """Enhanced error handling decorator"""
+    if error_types is None:
+        error_types = {
+            PlaywrightTimeout: "PLAYWRIGHT_TIMEOUT",
+            ConnectionError: "CONNECTION_ERROR",
+            TimeoutError: "TIMEOUT_ERROR",
+            Exception: "GENERAL_ERROR"
+        }
+    
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            last_error = None
+            
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except tuple(error_types.keys()) as e:
+                    last_error = e
+                    error_type = error_types.get(type(e), "UNKNOWN_ERROR")
+                    
+                    if attempt == max_retries - 1:
+                        if isinstance(e, PlaywrightTimeout):
+                            raise VerificationTimeoutError(f"Operation timed out after {max_retries} attempts", e)
+                        elif isinstance(e, (ConnectionError, TimeoutError)):
+                            raise NetworkError(f"Network error after {max_retries} attempts", e)
+                        else:
+                            raise SMSServiceError(f"Operation failed after {max_retries} attempts: {str(e)}", 
+                                               "GENERAL_ERROR", e)
+                    
+                    wait_time = (attempt + 1) * 2
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...", 
+                                 error_type=error_type)
+                    await asyncio.sleep(wait_time)
+            
+            raise last_error
+            
+        return wrapper
+    return decorator
+
 # Enhanced exception handling
 class SMSServiceError(Exception):
     """Base SMS service error"""
@@ -344,6 +385,446 @@ class BrowserError(SMSServiceError):
 class NetworkError(SMSServiceError):
     def __init__(self, message: str = "Network error", original_error: Exception = None):
         super().__init__(message, "NETWORK_ERROR", original_error)
+
+# VALR Automation class
+class EmailGenerator:
+    """Generate random email addresses and strong passwords"""
+    
+    def __init__(self):
+        self.domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com']
+        self.special_chars = '!@#$%^&*'
+    
+    def generate_random_email(self) -> str:
+        """Generate a random email address"""
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        domain = random.choice(self.domains)
+        return f"{random_string}{timestamp}@{domain}"
+    
+    def generate_strong_password(self, length: int = 12) -> str:
+        """Generate a strong password"""
+        lowercase = string.ascii_lowercase
+        uppercase = string.ascii_uppercase
+        digits = string.digits
+        
+        # Ensure at least one of each required character type
+        password = [
+            random.choice(lowercase),
+            random.choice(uppercase),
+            random.choice(digits),
+            random.choice(self.special_chars)
+        ]
+        
+        # Fill the rest with random characters
+        remaining_length = length - len(password)
+        all_chars = lowercase + uppercase + digits + self.special_chars
+        password.extend(random.choices(all_chars, k=remaining_length))
+        
+        # Shuffle the password
+        random.shuffle(password)
+        return ''.join(password)
+
+class VALRAutomator:
+    """Handles VALR account creation and verification automation"""
+    
+    def __init__(self, proxy_pool_manager=None):
+        self.proxy_pool_manager = proxy_pool_manager
+        self.browser = None
+        self.context = None
+        self.page = None
+        self.email_generator = EmailGenerator()
+    
+    @handle_errors({
+        PlaywrightTimeout: "ACCOUNT_CREATION_TIMEOUT",
+        ProxyError: "PROXY_ERROR",
+        NetworkError: "NETWORK_ERROR",
+        Exception: "ACCOUNT_CREATION_ERROR"
+    }, max_retries=3)
+    async def create_valr_account(self, playwright_instance=None) -> AccountCreationResult:
+        """Create a VALR account with proxy support"""
+        current_proxy = None
+        
+        try:
+            # Generate email and password
+            email = self.email_generator.generate_random_email()
+            password = self.email_generator.generate_strong_password()
+            
+            # Get proxy if enabled
+            if self.proxy_pool_manager:
+                current_proxy = self.proxy_pool_manager.get_random_proxy()
+            
+            # Setup browser context
+            browser = await playwright_instance.chromium.launch(
+                headless=config.browser.headless,
+                slow_mo=config.browser.slow_mo
+            )
+            
+            context_options = {
+                "viewport": {
+                    "width": config.browser.viewport_width,
+                    "height": config.browser.viewport_height
+                }
+            }
+            
+            # Add proxy if available
+            if current_proxy:
+                context_options["proxy"] = {
+                    "server": f"http://{current_proxy.host}:{current_proxy.port}",
+                    "username": current_proxy.username,
+                    "password": current_proxy.password
+                }
+            
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            
+            # Navigate to signup page
+            await page.goto(config.services.valr_signup_url, timeout=30000, wait_until="networkidle")
+            await asyncio.sleep(3)  # Wait for page to stabilize
+            
+            # Fill signup form
+            await self._fill_signup_form(page, email, password)
+            
+            # Submit the form
+            if not await self._submit_signup_form(page):
+                return AccountCreationResult(
+                    success=False,
+                    email=email,
+                    password=password,
+                    error="Failed to submit signup form",
+                    error_type="FORM_SUBMISSION_ERROR",
+                    proxy_used=f"{current_proxy.host}:{current_proxy.port}" if current_proxy else None
+                )
+            
+            # Wait and check for success/error indicators
+            await asyncio.sleep(5)
+            
+            # Analyze result
+            creation_result = await self._analyze_signup_result(page, email, password)
+            creation_result.proxy_used = f"{current_proxy.host}:{current_proxy.port}" if current_proxy else None
+            
+            if creation_result.success:
+                if current_proxy and self.proxy_pool_manager:
+                    self.proxy_pool_manager.mark_proxy_success(current_proxy)
+                logger.info(f"Successfully created VALR account: {email}")
+            else:
+                if current_proxy and self.proxy_pool_manager:
+                    self.proxy_pool_manager.mark_proxy_failure(current_proxy)
+            
+            return creation_result
+                
+        except Exception as e:
+            if current_proxy and self.proxy_pool_manager:
+                self.proxy_pool_manager.mark_proxy_failure(current_proxy, e)
+            
+            error_type = "UNKNOWN_ERROR"
+            if isinstance(e, PlaywrightTimeout):
+                error_type = "TIMEOUT_ERROR"
+            elif "proxy" in str(e).lower():
+                error_type = "PROXY_ERROR"
+            elif "network" in str(e).lower() or "connection" in str(e).lower():
+                error_type = "NETWORK_ERROR"
+            
+            logger.error(f"VALR account creation failed: {e}")
+            return AccountCreationResult(
+                success=False,
+                email=email if 'email' in locals() else "",
+                password=password if 'password' in locals() else "",
+                error=str(e),
+                error_type=error_type,
+                proxy_used=f"{current_proxy.host}:{current_proxy.port}" if current_proxy else None
+            )
+        finally:
+            # Cleanup resources
+            if 'page' in locals() and page:
+                await page.close()
+            if 'context' in locals() and context:
+                await context.close()
+            if 'browser' in locals() and browser:
+                await browser.close()
+    
+    async def _fill_signup_form(self, page: Page, email: str, password: str):
+        """Fill the signup form with error handling"""
+        try:
+            # Fill email field
+            await page.fill('input[type="email"]', email)
+            await asyncio.sleep(1)
+            
+            # Fill password fields
+            password_fields = await page.query_selector_all('input[type="password"]')
+            for field in password_fields:
+                await field.fill(password)
+                await asyncio.sleep(0.5)
+            
+            # Check terms checkbox
+            await page.check('input[type="checkbox"]')
+            
+        except Exception as e:
+            logger.error(f"Error filling signup form: {e}")
+            raise
+    
+    async def _submit_signup_form(self, page: Page) -> bool:
+        """Submit signup form with error handling"""
+        try:
+            submit_selectors = [
+                'button[type="submit"]',
+                'input[type="submit"]',
+                'button:has-text("Sign Up")',
+                'button:has-text("Create Account")',
+                '.signup-button',
+                '#signup-submit'
+            ]
+            
+            for selector in submit_selectors:
+                try:
+                    submit_button = await page.wait_for_selector(selector, timeout=5000)
+                    if submit_button:
+                        await submit_button.click()
+                        return True
+                except Exception as e:
+                    logger.debug(f"Failed to click submit button with selector {selector}: {e}")
+                    continue
+            
+            raise LoginError("No submit button found")
+            
+        except Exception as e:
+            logger.error(f"Error submitting signup form: {e}")
+            return False
+    
+    async def _analyze_signup_result(self, page: Page, email: str, password: str) -> AccountCreationResult:
+        """Analyze the result of account creation attempt"""
+        try:
+            # Check for success indicators
+            success_selectors = [
+                '.success-message',
+                '.welcome-message',
+                'text="Welcome to VALR"',
+                'text="Account Created Successfully"'
+            ]
+            
+            for selector in success_selectors:
+                try:
+                    if await page.wait_for_selector(selector, timeout=5000):
+                        return AccountCreationResult(
+                            success=True,
+                            email=email,
+                            password=password
+                        )
+                except:
+                    continue
+            
+            # Check for error messages
+            error_message = await self._extract_error_message(page)
+            if error_message:
+                error_type = self._categorize_error(error_message)
+                return AccountCreationResult(
+                    success=False,
+                    email=email,
+                    password=password,
+                    error=error_message,
+                    error_type=error_type
+                )
+            
+            # Default to success if no error found
+            return AccountCreationResult(
+                success=True,
+                email=email,
+                password=password
+            )
+            
+        except Exception as e:
+            logger.error(f"Error analyzing signup result: {e}")
+            return AccountCreationResult(
+                success=False,
+                email=email,
+                password=password,
+                error=str(e),
+                error_type="ANALYSIS_ERROR"
+            )
+    
+    async def _extract_error_message(self, page: Page) -> Optional[str]:
+        """Extract error message from the page"""
+        error_selectors = [
+            '.error-message',
+            '.alert-error',
+            '[role="alert"]',
+            '.validation-error'
+        ]
+        
+        for selector in error_selectors:
+            try:
+                error_element = await page.wait_for_selector(selector, timeout=2000)
+                if error_element:
+                    return await error_element.text_content()
+            except:
+                continue
+        
+        return None
+    
+    def _categorize_error(self, error_message: str) -> str:
+        """Categorize error message into error types"""
+        error_message = error_message.lower()
+        
+        if any(word in error_message for word in ['network', 'connection', 'timeout']):
+            return "NETWORK_ERROR"
+        elif any(word in error_message for word in ['email', 'invalid', 'taken', 'exists']):
+            return "EMAIL_ERROR"
+        elif any(word in error_message for word in ['password', 'weak', 'strong']):
+            return "PASSWORD_ERROR"
+        elif any(word in error_message for word in ['captcha', 'robot']):
+            return "CAPTCHA_ERROR"
+        elif any(word in error_message for word in ['rate', 'limit', 'too many']):
+            return "RATE_LIMIT_ERROR"
+        
+        return "UNKNOWN_ERROR"
+
+    async def request_verification_code_with_account(
+        self, 
+        phone_number: str, 
+        account_result: AccountCreationResult,
+        country: str,
+        playwright_instance=None
+    ) -> VerificationResult:
+        """Request verification code for an account"""
+        current_proxy = None
+        
+        try:
+            # Get proxy if enabled
+            if self.proxy_pool_manager:
+                current_proxy = self.proxy_pool_manager.get_random_proxy()
+            
+            # Setup browser context
+            browser = await playwright_instance.chromium.launch(
+                headless=config.browser.headless,
+                slow_mo=config.browser.slow_mo
+            )
+            
+            context_options = {
+                "viewport": {
+                    "width": config.browser.viewport_width,
+                    "height": config.browser.viewport_height
+                }
+            }
+            
+            # Add proxy if available
+            if current_proxy:
+                context_options["proxy"] = {
+                    "server": f"http://{current_proxy.host}:{current_proxy.port}",
+                    "username": current_proxy.username,
+                    "password": current_proxy.password
+                }
+            
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            
+            # Navigate to verification page
+            await page.goto(config.services.valr_verify_url, timeout=30000, wait_until="networkidle")
+            await asyncio.sleep(3)  # Wait for page to stabilize
+            
+            # Fill phone number
+            await page.fill('input[type="tel"]', phone_number)
+            await asyncio.sleep(1)
+            
+            # Select country if available
+            country_selector = 'select[name="country"]'
+            if await page.query_selector(country_selector):
+                await page.select_option(country_selector, country)
+                await asyncio.sleep(1)
+            
+            # Submit form
+            await page.click('button[type="submit"]')
+            await asyncio.sleep(5)
+            
+            # Check for immediate errors
+            error_message = await self._extract_error_message(page)
+            if error_message:
+                error_type = self._categorize_error(error_message)
+                return VerificationResult(
+                    phone_number=phone_number,
+                    service=ServiceType.VALR,
+                    success=False,
+                    error=error_message,
+                    error_type=error_type,
+                    proxy_used=f"{current_proxy.host}:{current_proxy.port}" if current_proxy else None
+                )
+            
+            # Wait for success message
+            success_message = await self._wait_for_verification_success(page)
+            if success_message:
+                if current_proxy and self.proxy_pool_manager:
+                    self.proxy_pool_manager.mark_proxy_success(current_proxy)
+                    
+                return VerificationResult(
+                    phone_number=phone_number,
+                    service=ServiceType.VALR,
+                    success=True,
+                    proxy_used=f"{current_proxy.host}:{current_proxy.port}" if current_proxy else None,
+                    account_email=account_result.email
+                )
+            
+            # If no success message, consider it failed
+            return VerificationResult(
+                phone_number=phone_number,
+                service=ServiceType.VALR,
+                success=False,
+                error="Verification request failed - no confirmation received",
+                error_type="VERIFICATION_ERROR",
+                proxy_used=f"{current_proxy.host}:{current_proxy.port}" if current_proxy else None,
+                account_email=account_result.email
+            )
+            
+        except Exception as e:
+            if current_proxy and self.proxy_pool_manager:
+                self.proxy_pool_manager.mark_proxy_failure(current_proxy, e)
+            
+            error_type = "UNKNOWN_ERROR"
+            if isinstance(e, PlaywrightTimeout):
+                error_type = "TIMEOUT_ERROR"
+            elif "proxy" in str(e).lower():
+                error_type = "PROXY_ERROR"
+            elif "network" in str(e).lower() or "connection" in str(e).lower():
+                error_type = "NETWORK_ERROR"
+            
+            logger.error(f"Verification request failed: {e}")
+            return VerificationResult(
+                phone_number=phone_number,
+                service=ServiceType.VALR,
+                success=False,
+                error=str(e),
+                error_type=error_type,
+                proxy_used=f"{current_proxy.host}:{current_proxy.port}" if current_proxy else None,
+                account_email=account_result.email
+            )
+        finally:
+            # Cleanup resources
+            if 'page' in locals() and page:
+                await page.close()
+            if 'context' in locals() and context:
+                await context.close()
+            if 'browser' in locals() and browser:
+                await browser.close()
+    
+    async def _wait_for_verification_success(self, page: Page) -> bool:
+        """Wait for verification success message"""
+        try:
+            success_selectors = [
+                'text="Verification code sent"',
+                'text="Code sent successfully"',
+                '.success-message',
+                '.verification-sent'
+            ]
+            
+            for selector in success_selectors:
+                try:
+                    if await page.wait_for_selector(selector, timeout=5000):
+                        return True
+                except:
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error waiting for verification success: {e}")
+            return False
 
 # Error handler decorator
 def handle_errors(error_types: Dict[type, str] = None, max_retries: int = 3):
